@@ -10,7 +10,6 @@ import SwiftUI
 
 struct PDFSettingsView: View {
     @Environment(UserConfig.self) private var userConfig
-    @State private var previousPack: OCRModelPack?
 
     var body: some View {
         @Bindable var userConfig = userConfig
@@ -40,13 +39,7 @@ struct PDFSettingsView: View {
             }
 
             Section {
-                Picker("Model", selection: $userConfig.pdfOCRModel) {
-                    ForEach(OCRModelPack.selectable) { pack in
-                        Text(pack.title).tag(pack)
-                    }
-                }
-
-                ForEach(OCRModelPack.supported) { pack in
+                ForEach(OCRModelPack.allCases) { pack in
                     OCRModelRow(pack: pack)
                 }
             } header: {
@@ -66,31 +59,6 @@ struct PDFSettingsView: View {
         .navigationTitle("PDF")
         .onAppear {
             OCRModelStore.shared.refresh()
-        }
-        .onChange(of: userConfig.pdfOCRModel) { old, _ in
-            if OCRModelStore.shared.state(for: old) == .installed {
-                previousPack = old
-            }
-        }
-        .confirmationDialog(
-            "Delete \(previousPack?.title ?? "")?",
-            isPresented: Binding(
-                get: { previousPack != nil },
-                set: { if !$0 { previousPack = nil } }
-            ),
-            titleVisibility: .visible
-        ) {
-            Button("Delete", role: .destructive) {
-                if let previousPack {
-                    OCRModelStore.shared.delete(previousPack)
-                }
-                previousPack = nil
-            }
-            Button("Keep", role: .cancel) {
-                previousPack = nil
-            }
-        } message: {
-            Text("Pages recognized with the previous model are recognized again with the new one as you read.")
         }
     }
 }
@@ -122,12 +90,7 @@ private struct OCRModelRow: View {
                     Text("\(status) · \(size)")
                         .font(.caption)
                         .foregroundStyle(.secondary)
-                    if pack == .v6Medium {
-                        Text("Slower and a larger download")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    }
-                    if pack.isForManga {
+                    if pack == .v6Manga {
                         Text("Only used for books set to the manga model in the reader menu")
                             .font(.caption)
                             .foregroundStyle(.secondary)

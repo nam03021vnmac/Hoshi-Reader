@@ -13,7 +13,6 @@ import SwiftUI
 
 /// Developer entry point: runs OCR on one page of a PDF book and shows the lines and timings
 struct OCRDebugView: View {
-    @Environment(UserConfig.self) private var userConfig
     @State private var books: [BookMetadata] = []
     @State private var selectedBook: BookMetadata?
     @State private var pageCount = 1
@@ -35,7 +34,7 @@ struct OCRDebugView: View {
                 }
                 Stepper("Page \(page) of \(pageCount)", value: $page, in: 1...max(pageCount, 1))
                 Picker("Model", selection: $pack) {
-                    ForEach(OCRModelPack.supported) { pack in
+                    ForEach(OCRModelPack.allCases) { pack in
                         Text(pack.title).tag(pack)
                     }
                 }
@@ -92,7 +91,6 @@ struct OCRDebugView: View {
         }
         .navigationTitle("OCR Test")
         .task {
-            pack = userConfig.pdfOCRModel
             books = ((try? BookStorage.loadAllBooks()) ?? []).filter { $0.format == .pdf }
             if selectedBook == nil {
                 selectedBook = books.first
