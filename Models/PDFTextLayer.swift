@@ -112,7 +112,7 @@ nonisolated struct PDFTextLine: Codable, Sendable {
 
 nonisolated struct PDFTextLayer: Codable, Sendable {
     // bump to invalidate caches when the format or algorithm changes
-    static let currentVersion = 1
+    static let currentVersion = 3
 
     let version: Int
     let pageIndex: Int
