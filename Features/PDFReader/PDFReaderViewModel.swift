@@ -129,9 +129,9 @@ final class PDFReaderViewModel {
     
     // MARK: OCR
     
-    /// Manga books use the manga pack, everything else the pack selected in settings
+    /// Manga books use the manga pack, everything else the standard one
     var ocrPack: OCRModelPack {
-        isManga ? .v6Manga : UserConfig.shared.pdfOCRModel
+        isManga ? .v6Manga : .v6Small
     }
     
     private func ocrConfiguration() -> PDFOCRConfiguration {
@@ -152,7 +152,7 @@ final class PDFReaderViewModel {
         OCRModelStore.shared.state(for: ocrPack) == .installed
     }
     
-    /// Picks up changes to the OCR mode, the selected pack, or a finished model download
+    /// Picks up changes to the OCR mode, the book's pack, or a finished model download
     func refreshOCR() {
         let configuration = ocrConfiguration()
         guard configuration.key != ocrConfigurationKey, let textLayers else {

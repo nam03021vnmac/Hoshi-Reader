@@ -1095,17 +1095,6 @@
         }
       }
     },
-    "Delete %@?" : {
-      "comment" : "Context: Settings > Advanced > PDF. Surrounding UI is a grouped form for PDF display and OCR (text recognition) options.",
-      "localizations" : {
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "删除%@？"
-          }
-        }
-      }
-    },
     "Delete %lld book(s)?" : {
       "comment" : "Context: Bookshelf and shelf management. Surrounding UI includes book lists, empty states, shelf actions, sort controls, and book context-menu confirmations.",
       "localizations" : {
@@ -1455,17 +1444,6 @@
         }
       }
     },
-    "High accuracy (PP-OCRv6 medium)" : {
-      "comment" : "Context: Settings > Advanced > PDF. Surrounding UI is a grouped form for PDF display and OCR (text recognition) options.",
-      "localizations" : {
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "高精度（PP-OCRv6 medium）"
-          }
-        }
-      }
-    },
     "Highlights" : {
       "comment" : "Context: Reader, chapters, highlights, and reading statistics screens. Surrounding UI includes jump-to-character alerts, progress rows, and reading metric labels.",
       "localizations" : {
@@ -1674,17 +1652,6 @@
         }
       }
     },
-    "Keep" : {
-      "comment" : "Context: Settings > Advanced > PDF. Surrounding UI is a grouped form for PDF display and OCR (text recognition) options.",
-      "localizations" : {
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "保留"
-          }
-        }
-      }
-    },
     "Keep Volume" : {
       "comment" : "Context: Settings > Audio. Surrounding UI manages Yomitan JSON audio sources, local audio database import, autoplay, and background audio behavior.",
       "localizations" : {
@@ -1709,17 +1676,6 @@
     },
     "Left" : {
 
-    },
-    "Legacy (PP-OCRv5 mobile)" : {
-      "comment" : "Context: Settings > Advanced > PDF. Surrounding UI is a grouped form for PDF display and OCR (text recognition) options.",
-      "localizations" : {
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "旧版（PP-OCRv5 mobile）"
-          }
-        }
-      }
     },
     "Light" : {
       "comment" : "Context: Settings > Appearance. Surrounding UI is a grouped form for reader theme, text, layout, display, and popup controls.",
@@ -2276,17 +2232,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "分页"
-          }
-        }
-      }
-    },
-    "Pages recognized with the previous model are recognized again with the new one as you read." : {
-      "comment" : "Context: Settings > Advanced > PDF. Surrounding UI is a grouped form for PDF display and OCR (text recognition) options.",
-      "localizations" : {
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "用之前模型识别的页面会在阅读时用新模型重新识别。"
           }
         }
       }
@@ -2915,17 +2860,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "快进/快退按钮会替代上一条/下一条字幕按钮"
-          }
-        }
-      }
-    },
-    "Slower and a larger download" : {
-      "comment" : "Context: Settings > Advanced > PDF. Surrounding UI is a grouped form for PDF display and OCR (text recognition) options.",
-      "localizations" : {
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "速度较慢，下载体积较大"
           }
         }
       }

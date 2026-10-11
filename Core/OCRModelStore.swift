@@ -13,41 +13,18 @@ import UIKit
 
 nonisolated enum OCRModelPack: String, CaseIterable, Codable, Identifiable, Sendable {
     case v6Small = "ppocrv6-small"
-    case v6Medium = "ppocrv6-medium"
-    case v5Mobile = "ppocrv5-mobile"
     /// PP-OCRv6 small detection with a recognizer fine-tuned on manga, only used for books marked as manga
     case v6Manga = "ppocrv6-manga"
 
-    // 8 GB devices report a little under 8 GiB
-    static let minimumMemoryForMedium: UInt64 = 7 * 1024 * 1024 * 1024
+    /// Packs earlier versions offered, removed with their models on launch
+    static let retired = ["ppocrv6-medium", "ppocrv5-mobile"]
 
     var id: String { rawValue }
-
-    var isSupportedOnThisDevice: Bool {
-        self != .v6Medium || ProcessInfo.processInfo.physicalMemory >= Self.minimumMemoryForMedium
-    }
-
-    static var supported: [OCRModelPack] {
-        allCases.filter(\.isSupportedOnThisDevice)
-    }
-
-    var isForManga: Bool {
-        self == .v6Manga
-    }
-
-    /// Packs offered as the model for all books
-    static var selectable: [OCRModelPack] {
-        supported.filter { !$0.isForManga }
-    }
 
     var title: String {
         switch self {
         case .v6Small:
             String(localized: "Standard (PP-OCRv6 small)")
-        case .v6Medium:
-            String(localized: "High accuracy (PP-OCRv6 medium)")
-        case .v5Mobile:
-            String(localized: "Legacy (PP-OCRv5 mobile)")
         case .v6Manga:
             String(localized: "Manga (PP-OCRv6 manga)")
         }
@@ -97,26 +74,6 @@ nonisolated enum OCRModelManifest {
                          sha256: "b5f2bfe2bdd9448429e3e82b51c789775d9b42f2403d082b00662eb77e401c5d", bytes: 74947),
             OCRModelFile(name: "params.json", source: .bundled("ppocrv6-small-params.json"),
                          sha256: "f9ee78dee2e91e21808ccd6e82cd38219c137e5a179bfaf9196e4b1a8b021452", bytes: 654),
-        ]
-        case .v6Medium: [
-            OCRModelFile(name: "det.onnx", source: .remote(huggingFace("PP-OCRv6_medium_det_onnx", "61323801669c338b7891481ec7bac61ce31b576a")),
-                         sha256: "eb13b44b25bb36f89528b68720af8a61d9cf381176107f465db1757b65d086e1", bytes: 62032837),
-            OCRModelFile(name: "rec.onnx", source: .remote(huggingFace("PP-OCRv6_medium_rec_onnx", "50c7eacafc52fa7bcf4194e8cd08e46f8558504b")),
-                         sha256: "9c09abf0957f7968c7586464b7397b84ad2387a0497a351af40e9acc71b673ba", bytes: 76554979),
-            OCRModelFile(name: "dict.txt", source: .bundled("ppocrv6-medium-dict.txt"),
-                         sha256: "b5f2bfe2bdd9448429e3e82b51c789775d9b42f2403d082b00662eb77e401c5d", bytes: 74947),
-            OCRModelFile(name: "params.json", source: .bundled("ppocrv6-medium-params.json"),
-                         sha256: "0e5df4e595ccf2fb8f1efa88cd687d3dc1ba97743b01169852aed813bea1fd69", bytes: 655),
-        ]
-        case .v5Mobile: [
-            OCRModelFile(name: "det.onnx", source: .remote(huggingFace("PP-OCRv5_mobile_det_onnx", "e6f4fa85f00e168c862bc462aebca69eef9b3d3d")),
-                         sha256: "a431985659dc921974177a95adcfbb90fd9e51989a5e04d70d0b75f597b6e61d", bytes: 4826518),
-            OCRModelFile(name: "rec.onnx", source: .remote(huggingFace("PP-OCRv5_mobile_rec_onnx", "ed152b8b495f84de93cda5709d768548a9127622")),
-                         sha256: "da72dc72ca4dc220df0dfde68c1dedc31c58d3e76a25871122e5056227d50092", bytes: 16534782),
-            OCRModelFile(name: "dict.txt", source: .bundled("ppocrv5-mobile-dict.txt"),
-                         sha256: "d1979e9f794c464c0d2e0b70a7fe14dd978e9dc644c0e71f14158cdf8342af1b", bytes: 74012),
-            OCRModelFile(name: "params.json", source: .bundled("ppocrv5-mobile-params.json"),
-                         sha256: "69bdb060a2faf73c8eef30ac50af837abcb19114cdac137271c9bb1c7a5e10be", bytes: 654),
         ]
         case .v6Manga: [
             OCRModelFile(name: "det.onnx", source: .remote(huggingFace("PP-OCRv6_small_det_onnx", "28fe5895c24fd108c19eb3e8479f4ab385fbfc62")),
@@ -176,6 +133,7 @@ final class OCRModelStore {
     private var engine: PaddleOCREngine?
 
     private init() {
+        Self.removeRetiredPacks()
         refresh()
         NotificationCenter.default.addObserver(forName: UIApplication.didReceiveMemoryWarningNotification, object: nil, queue: .main) { [weak self] _ in
             MainActor.assumeIsolated {
@@ -191,6 +149,15 @@ final class OCRModelStore {
     func refresh() {
         for pack in OCRModelPack.allCases where downloads[pack] == nil {
             states[pack] = Self.installedPaths(for: pack) == nil ? .notInstalled : .installed
+        }
+    }
+
+    nonisolated private static func removeRetiredPacks() {
+        guard let root = rootDirectory else {
+            return
+        }
+        for name in OCRModelPack.retired {
+            try? FileManager.default.removeItem(at: root.appendingPathComponent(name, isDirectory: true))
         }
     }
 

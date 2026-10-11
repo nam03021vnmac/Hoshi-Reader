@@ -41,7 +41,7 @@ Read this whole document before you write code. Each phase in [§14](#14-impleme
   - show `PopupView` (including nested popups, Anki mining with sentence and cloze offset, and audio)
 - **Text source per page:**
   1. If the page has a usable embedded text layer, use it through PDFKit.
-  2. Otherwise, run **PaddleOCR (PP-OCRv6 small by default; medium optional on capable devices)** on device and build a text layer from the result.
+  2. Otherwise, run **PaddleOCR (PP-OCRv6 small, or the manga pack for books marked as manga)** on device and build a text layer from the result.
 - Cache OCR results on disk so each page is OCR'd once.
 - Track progress, show it on the bookshelf, and restore the last page.
 
@@ -409,16 +409,16 @@ PP-OCRv6 (released 2026-06-11 with PaddleOCR 3.7.0) is the latest PP-OCR generat
 
 | Model | Det Hmean | Rec acc. | Japanese | Apple M4 s/img (Paddle, CPU) | Role in Hoshi |
 |---|---|---|---|---|---|
-| PP-OCRv5_mobile | 75.2 | 73.7 | yes | 5.82 | **Fallback** (see the vertical-text gate below) |
+| PP-OCRv5_mobile | 75.2 | 73.7 | yes | 5.82 | Removed (earlier builds offered it as "Legacy") |
 | PP-OCRv6_tiny | 80.6 | 73.5 | **no** | 0.96 | ❌ Not usable: no Japanese |
 | **PP-OCRv6_small** | 84.1 | 81.3 | yes | 3.07 | ✅ **Default** on all devices |
-| **PP-OCRv6_medium** | 86.2 | 83.2 | yes | not published (est. ≈ 5–6 s*) | ✅ **Optional "High accuracy"**, capable devices only |
+| PP-OCRv6_medium | 86.2 | 83.2 | yes | not published (est. ≈ 5–6 s*) | Removed (earlier builds offered it as "High accuracy") |
 
 \* PaddleOCR doesn't publish an M4 time for medium. On their Xeon benchmark, medium takes about 1.8 times as long as small (1.40 s vs 0.79 s), which suggests roughly 5.5 s on M4. Phase 4 must measure the real number.
 
 Decisions:
 - **Default: `PP-OCRv6_small`** (det + rec). It's more accurate than v5 mobile, faster, and supports Japanese.
-- **Optional: `PP-OCRv6_medium`** as a separate "High accuracy" download. It's offered only when `ProcessInfo.processInfo.physicalMemory >= 8 GB` (M-series iPads, recent Pro iPhones). It's about 2 points better than small on both det and rec, so it's mainly worth it for poor scans. Its download is large: 34.5M parameters is about 140 MB in fp32 (exact file sizes come from the manifest). Prefetch (§6) hides most of the latency while reading. The cost shows on the first tap of an un-OCR'd page, and in "OCR all pages".
+- **No medium or v5 mobile.** Earlier builds offered `PP-OCRv6_medium` ("High accuracy", 8 GB devices only, about 140 MB) and `PP-OCRv5_mobile` ("Legacy") as optional downloads; both were removed. On the tategaki fixtures medium scored 94.1% against small's 93.7% at about 3× the detection and 4× the recognition time. `OCRModelStore` deletes their downloaded files on launch (`OCRModelPack.retired`).
 - **Never use tiny.** Its language list doesn't include Japanese.
 - **Vertical-text gate.** PaddleOCR's v6 docs don't mention vertical text. Before v6 becomes the shipped default, Phase 4 must run small (and medium) **and** v5 mobile on the tategaki fixtures (§15.1) and compare character accuracy. If v6 does clearly worse on vertical text, ship v5 mobile as the default and keep v6 as an option. The engine abstraction and manifest make this a data change, not a code change.
 - **No orientation classifier.** Skip the text-line orientation classifier (`cls`). Book scans are upright, and we handle vertical lines geometrically (§7.6).
@@ -467,15 +467,10 @@ Also write `Scripts/ocr/reference.py`: a small Python reference pipeline using `
 `Core/OCRModelStore.swift`:
 ```swift
 nonisolated enum OCRModelPack: String, CaseIterable, Codable, Sendable {
-    case v6Small  = "ppocrv6-small"       // default
-    case v6Medium = "ppocrv6-medium"      // "High accuracy", gated by RAM
-    case v5Mobile = "ppocrv5-mobile"      // fallback (vertical-text gate, §7.3)
-    case v6Manga  = "ppocrv6-manga"       // v6 small det + Kellenok's manga rec, only for books marked as manga
+    case v6Small = "ppocrv6-small"        // every book
+    case v6Manga = "ppocrv6-manga"        // v6 small det + Kellenok's manga rec, only for books marked as manga
 
-    static let minimumMemoryForMedium: UInt64 = 8 * 1024 * 1024 * 1024
-    var isSupportedOnThisDevice: Bool {
-        self != .v6Medium || ProcessInfo.processInfo.physicalMemory >= Self.minimumMemoryForMedium
-    }
+    static let retired = ["ppocrv6-medium", "ppocrv5-mobile"]   // deleted from OCRModels/ on launch
 }
 
 nonisolated struct OCRModelFile: Sendable { let name: String; let url: URL; let sha256: String; let bytes: Int }
@@ -498,9 +493,9 @@ final class OCRModelStore {
     nonisolated static func installedPaths(for pack: OCRModelPack) -> (det: URL, rec: URL, dict: URL, params: URL)?
 }
 ```
-- **The selected pack** is `UserConfig.pdfOCRModel` (§10), which defaults to `.v6Small`. If the selected pack isn't installed, the reader shows the download prompt (§12), and the prompt states the pack's size from the manifest.
-- **Manga pack.** `.v6Manga` pairs the v6 small detector with [Kellenok/PP-OCRv6_manga](https://huggingface.co/Kellenok/PP-OCRv6_manga)'s `manga_rec_v0.2` (a manga fine-tune of the v6 small recognizer, Apache-2.0; same dictionary, preprocessing and `params.json` as v6 small). It isn't offered in the settings picker. A book uses it instead of the selected pack when `PDFInfo.isManga` is set ("Use Manga Model for This Book" in the reader menu). Its own detector (`manga_det_v0.2`) isn't used: on book pages it misses or truncates most ruby and clips sentence-final 。.
-- **Switching packs** doesn't delete cached OCR pages. Each cached layer records `engine`, and the provider (§6) treats a layer from a different engine as stale and re-OCRs that page lazily when it's next needed. Offer "Delete the old model" after a successful switch.
+- **The book's pack** is `.v6Small`, or `.v6Manga` for books marked as manga (`PDFReaderViewModel.ocrPack`). There is no model setting. If the pack isn't installed, the reader shows the download prompt (§12), and the prompt states the pack's size from the manifest.
+- **Manga pack.** `.v6Manga` pairs the v6 small detector with [Kellenok/PP-OCRv6_manga](https://huggingface.co/Kellenok/PP-OCRv6_manga)'s `manga_rec_v0.2` (a manga fine-tune of the v6 small recognizer, Apache-2.0; same dictionary, preprocessing and `params.json` as v6 small). A book uses it instead of `.v6Small` when `PDFInfo.isManga` is set ("Use Manga Model for This Book" in the reader menu). Its own detector (`manga_det_v0.2`) isn't used: on book pages it misses or truncates most ruby and clips sentence-final 。.
+- **Switching packs** doesn't delete cached OCR pages. Each cached layer records `engine`, and the provider (§6) treats a layer from a different engine as stale and re-OCRs that page lazily when it's next needed.
 - **Hosting.** `det.onnx` and `rec.onnx` download straight from PaddlePaddle's Hugging Face repos (and Kellenok/PP-OCRv6_manga for the manga recognizer), **pinned to a commit** (`/resolve/<commit>/inference.onnx`) and verified against SHA-256, so they can't change underneath the app. `dict.txt` and `params.json` are derived files that Hugging Face doesn't host, so they ship in the app bundle (`Features/PDFReader/OCR/Packs/<pack>-dict.txt`, `<pack>-params.json`, about 75 KB per pack); `fetch_models.sh` regenerates them. The `ocr-models-v1` GitHub release originally planned here was never published (its URLs returned 404). If the packs are ever self-hosted, `fetch_models.sh` still writes the flat `release/` copies.
 - **Dev fallback:** `installedPaths(for:)` checks `Bundle.main` for `<pack>/det.onnx` etc. before Application Support. Developers can drop the files into the project locally without committing them; add them to `.gitignore`.
 - Mark the model directories `isExcludedFromBackup = true` (`URLResourceValues`).
@@ -602,11 +597,9 @@ PaddleOCR's published timings are full-pipeline runs with Paddle on desktop chip
 |---|---|---|
 | v6 small (default) | A15/A16 iPhone, CPU EP | **≤ 2 s** |
 | v6 small | M-series iPad | ≤ 1 s |
-| v6 medium (optional) | M4 iPad Pro, best of CPU/CoreML EP | **≤ 6 s** (prefetch hides it while reading) |
-| v5 mobile (fallback) | A15/A16 iPhone, CPU EP | ≤ 2 s |
 
 - If v6 small misses its iPhone target by a lot, lower the det input limit first (1536 → 1280) before changing anything else.
-- Watch thermals during "OCR all pages" with medium. Add a short sleep between pages if the device reports `ProcessInfo.thermalState >= .serious`.
+- Watch thermals during "OCR all pages". Add a short sleep between pages if the device reports `ProcessInfo.thermalState >= .serious`.
 
 ### 7.7 Layout analysis (`Features/PDFReader/TextLayer/LayoutAnalyzer.swift`)
 
@@ -835,9 +828,8 @@ Add to [Core/UserConfig.swift](Core/UserConfig.swift), following the existing `d
 | `pdfRightToLeft` | `Bool` | `true` | RTL page order (Japanese) |
 | `pdfOCRMode` | `PDFOCRMode { auto, always, off }` | `.auto` | `auto`: OCR only pages without a usable text layer. `always`: ignore embedded text. `off`: never OCR. |
 | `pdfPrefetchPages` | `Int` | `2` | Pages to pre-OCR ahead and behind |
-| `pdfOCRModel` | `OCRModelPack` (§7.4) | `.v6Small` | Which OCR model pack to use. `.v6Medium` is shown only when `isSupportedOnThisDevice`. If a stored `.v6Medium` isn't supported on this device (e.g. restored from a backup), fall back to `.v6Small`. Never `.v6Manga`, which is picked per book (§7.4). |
 
-UI: new `Features/Settings/PDFSettingsView.swift`, linked from [AdvancedView.swift](Features/Settings/AdvancedView.swift) as "PDF". It includes the settings above and an **OCR model** section: a picker for the pack ("Standard (PP-OCRv6 small)", "High accuracy (PP-OCRv6 medium)" on capable devices, and "Legacy (PP-OCRv5 mobile)"), and for each pack its status, download size, a Download/Delete button and a progress bar. Under "High accuracy", add a footnote that it's slower and a larger download. The same view is presented as a sheet from the reader menu.
+UI: new `Features/Settings/PDFSettingsView.swift`, linked from [AdvancedView.swift](Features/Settings/AdvancedView.swift) as "PDF". It includes the settings above and an **OCR model** section: for each pack ("Standard (PP-OCRv6 small)" and "Manga (PP-OCRv6 manga)") its status, download size, a Download/Delete button and a progress bar. Under "Manga", a footnote says it's only used for books set to the manga model in the reader menu. The same view is presented as a sheet from the reader menu.
 
 ---
 
@@ -857,7 +849,7 @@ UI: new `Features/Settings/PDFSettingsView.swift`, linked from [AdvancedView.swi
 | `Features/Settings/AdvancedView.swift` | Link to `PDFSettingsView` |
 | `HoshiReader-Info.plist` | `com.adobe.pdf` document type (`Alternate`) |
 | `Hoshi Reader.xcodeproj` | SPM: `onnxruntime-swift-package-manager` (app target only) |
-| `README.md` | Feature bullet "PDF support with OCR (PaddleOCR)"; Libraries table: ONNX Runtime (MIT); Attribution table: PaddleOCR PP-OCRv6 (and PP-OCRv5, if shipped) models (Apache-2.0) |
+| `README.md` | Feature bullet "PDF support with OCR (PaddleOCR)"; Libraries table: ONNX Runtime (MIT); Attribution table: PaddleOCR PP-OCRv6 models and Kellenok/PP-OCRv6_manga (Apache-2.0) |
 | `.gitignore` | `*.onnx`, `Scripts/ocr/.venv/`, local model drops |
 | `Localizable.xcstrings` | New strings (Xcode adds them on build) |
 
@@ -907,7 +899,7 @@ Scripts/ocr/reference.py
 | Tap during OCR, then the user turns the page | Tap token check (§9.2) drops the stale result |
 | OCR model not installed | `auto`/`always` mode + scanned page → non-blocking sheet: "This page has no text. Download OCR model (<size from manifest>)?" for the selected pack. Shown at most once per reader session. |
 | User switches OCR pack | Old cached pages are re-OCR'd lazily (engine mismatch, §6). The old pack's sessions are released. Offer to delete the old pack's files. |
-| Medium selected, low memory or thermal pressure | On a memory warning, release the sessions (they reload on the next request). During "OCR all pages", back off while `thermalState >= .serious`. |
+| Low memory or thermal pressure | On a memory warning, release the sessions (they reload on the next request). During "OCR all pages", back off while `thermalState >= .serious`. |
 | Low memory warning | Release ORT sessions and the in-memory layer cache. Recreate lazily. |
 | App backgrounded during whole-book OCR | Cancel the task. Progress is per page on disk, so it resumes where it stopped. |
 | Furigana in scanned books | Ruby detection (§7.7). A tap on ruby maps to the base text. |
@@ -919,7 +911,7 @@ Scripts/ocr/reference.py
 
 ## 13. Licensing
 
-- **PaddleOCR / PP-OCRv6 (and PP-OCRv5) models:** Apache-2.0 (per PaddlePaddle's announcement). Confirm the license on each Hugging Face model card before publishing the release asset. Compatible with GPL-3.0 distribution. Add attribution to the README "Attribution" table and the About screen ([AboutView.swift](Features/Settings/AboutView.swift)) if it lists libraries.
+- **PaddleOCR / PP-OCRv6 models and Kellenok/PP-OCRv6_manga:** Apache-2.0 (per PaddlePaddle's announcement). Confirm the license on each Hugging Face model card before publishing the release asset. Compatible with GPL-3.0 distribution. Add attribution to the README "Attribution" table and the About screen ([AboutView.swift](Features/Settings/AboutView.swift)) if it lists libraries.
 - **ONNX Runtime:** MIT. Add to the README "Libraries" table.
 - The models are downloaded, not bundled, but they still need attribution because the app uses them.
 

@@ -320,10 +320,6 @@ class UserConfig {
         didSet { UserDefaults.standard.set(pdfOCRMode.rawValue, forKey: "pdfOCRMode") }
     }
     
-    var pdfOCRModel: OCRModelPack {
-        didSet { UserDefaults.standard.set(pdfOCRModel.rawValue, forKey: "pdfOCRModel") }
-    }
-    
     var readerShowTitle: Bool {
         didSet { UserDefaults.standard.set(readerShowTitle, forKey: "readerShowTitle") }
     }
@@ -592,10 +588,6 @@ class UserConfig {
         self.pdfPrefetchPages = defaults.object(forKey: "pdfPrefetchPages") as? Int ?? 2
         self.pdfOCRMode = defaults.string(forKey: "pdfOCRMode")
             .flatMap(PDFOCRMode.init) ?? .auto
-        // a pack restored from a backup may not be supported on this device
-        self.pdfOCRModel = defaults.string(forKey: "pdfOCRModel")
-            .flatMap(OCRModelPack.init)
-            .flatMap { OCRModelPack.selectable.contains($0) ? $0 : nil } ?? .v6Small
         self.chapterSwipeDistance = defaults.object(forKey: "chapterSwipeDistance") as? Int ?? 20
         self.horizontalPadding = defaults.object(forKey: "layoutHorizontalPadding") as? Int ?? 5
         self.verticalPadding = defaults.object(forKey: "layoutVerticalPadding") as? Int ?? 0

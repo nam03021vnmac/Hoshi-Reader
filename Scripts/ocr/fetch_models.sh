@@ -36,10 +36,6 @@ CACHE="$OUT/hf"
 MODELS=(
     "PP-OCRv6_small_det_onnx|28fe5895c24fd108c19eb3e8479f4ab385fbfc62|d73e0058b7a8086bbd57f3d10b8bcd4ff95363f67e06e2762b5e814fe9c9410e"
     "PP-OCRv6_small_rec_onnx|b8f84f0b80c529de40b4fbb3544b84fa7233a513|5435fd747c9e0efe15a96d0b378d5bd157e9492ed8fd80edf08f30d02fa24634"
-    "PP-OCRv6_medium_det_onnx|61323801669c338b7891481ec7bac61ce31b576a|eb13b44b25bb36f89528b68720af8a61d9cf381176107f465db1757b65d086e1"
-    "PP-OCRv6_medium_rec_onnx|50c7eacafc52fa7bcf4194e8cd08e46f8558504b|9c09abf0957f7968c7586464b7397b84ad2387a0497a351af40e9acc71b673ba"
-    "PP-OCRv5_mobile_det_onnx|e6f4fa85f00e168c862bc462aebca69eef9b3d3d|a431985659dc921974177a95adcfbb90fd9e51989a5e04d70d0b75f597b6e61d"
-    "PP-OCRv5_mobile_rec_onnx|ed152b8b495f84de93cda5709d768548a9127622|da72dc72ca4dc220df0dfde68c1dedc31c58d3e76a25871122e5056227d50092"
 )
 
 # Kellenok's manga fine-tune of the PP-OCRv6 small recognizer (Apache-2.0), file|revision|sha256.
@@ -50,8 +46,6 @@ MANGA_REC="rec/manga_rec_v0.2.onnx|8ee29e094b6aac77dd067c70805438782fa16ab0|de12
 # pack|det dir|rec dir[|model name]
 PACKS=(
     "ppocrv6-small|PP-OCRv6_small_det_onnx|PP-OCRv6_small_rec_onnx"
-    "ppocrv6-medium|PP-OCRv6_medium_det_onnx|PP-OCRv6_medium_rec_onnx"
-    "ppocrv5-mobile|PP-OCRv5_mobile_det_onnx|PP-OCRv5_mobile_rec_onnx"
     "ppocrv6-manga|PP-OCRv6_small_det_onnx|PP-OCRv6_manga_rec|PP-OCRv6_manga"
 )
 

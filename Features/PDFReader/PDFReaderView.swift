@@ -433,9 +433,6 @@ struct PDFReaderView: View {
         .onChange(of: userConfig.pdfOCRMode) {
             viewModel.refreshOCR()
         }
-        .onChange(of: userConfig.pdfOCRModel) {
-            viewModel.refreshOCR()
-        }
         .onChange(of: ocrModelState) {
             viewModel.refreshOCR()
         }
