@@ -64,6 +64,9 @@
     "/ %@ character goal" : {
 
     },
+    "/ %lld" : {
+
+    },
     "/ %lld minute goal" : {
 
     },
@@ -842,6 +845,9 @@
         }
       }
     },
+    "Could not open PDF" : {
+
+    },
     "Couldn't open book" : {
 
     },
@@ -1240,6 +1246,9 @@
           }
         }
       }
+    },
+    "Go to page" : {
+
     },
     "Goal" : {
 
@@ -1870,6 +1879,15 @@
         }
       }
     },
+    "Outline" : {
+
+    },
+    "Page" : {
+
+    },
+    "Page Mode" : {
+
+    },
     "Page Turn" : {
       "localizations" : {
         "zh-Hans" : {
@@ -1879,6 +1897,9 @@
           }
         }
       }
+    },
+    "Paged" : {
+
     },
     "Paginated" : {
       "comment" : "Context: Settings > Appearance. Surrounding UI is a grouped form for reader theme, text, layout, display, and popup controls.",
@@ -1901,10 +1922,22 @@
         }
       }
     },
+    "Password-protected PDFs are not supported" : {
+
+    },
     "Pause Duration" : {
 
     },
     "Pause on Images" : {
+
+    },
+    "PDF" : {
+
+    },
+    "PDF has no pages" : {
+
+    },
+    "PDF Settings" : {
 
     },
     "Period" : {
@@ -2089,6 +2122,9 @@
       }
     },
     "Right" : {
+
+    },
+    "Right-to-Left Pages" : {
 
     },
     "Sasayaki" : {

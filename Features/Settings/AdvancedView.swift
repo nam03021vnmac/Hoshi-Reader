@@ -29,6 +29,15 @@ struct AdvancedView: View {
             
             Section {
                 NavigationLink {
+                    PDFSettingsView()
+                } label: {
+                    Label("PDF", systemImage: "doc.richtext")
+                }
+                .foregroundStyle(.primary)
+            }
+            
+            Section {
+                NavigationLink {
                     SyncView()
                 } label: {
                     Label("ッツ Sync", systemImage: "cloud")

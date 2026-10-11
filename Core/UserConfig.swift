@@ -99,6 +99,11 @@ enum CoverMode: String, CaseIterable, Codable {
     case hide = "Hide"
 }
 
+enum PDFDisplayMode: String, CaseIterable, Codable {
+    case paged = "Paged"
+    case continuous = "Continuous"
+}
+
 @Observable
 class UserConfig {
     static let shared = UserConfig()
@@ -289,6 +294,14 @@ class UserConfig {
     
     var paragraphSpacing: Double {
         didSet { UserDefaults.standard.set(paragraphSpacing, forKey: "paragraphSpacing") }
+    }
+    
+    var pdfDisplayMode: PDFDisplayMode {
+        didSet { UserDefaults.standard.set(pdfDisplayMode.rawValue, forKey: "pdfDisplayMode") }
+    }
+    
+    var pdfRightToLeft: Bool {
+        didSet { UserDefaults.standard.set(pdfRightToLeft, forKey: "pdfRightToLeft") }
     }
     
     var readerShowTitle: Bool {
@@ -553,6 +566,9 @@ class UserConfig {
             .flatMap(FuriganaMode.init) ?? (defaults.bool(forKey: "readerHideFurigana") ? .hidden : .off)
         
         self.continuousMode = defaults.object(forKey: "continuousMode") as? Bool ?? false
+        self.pdfDisplayMode = defaults.string(forKey: "pdfDisplayMode")
+            .flatMap(PDFDisplayMode.init) ?? .paged
+        self.pdfRightToLeft = defaults.object(forKey: "pdfRightToLeft") as? Bool ?? true
         self.chapterSwipeDistance = defaults.object(forKey: "chapterSwipeDistance") as? Int ?? 20
         self.horizontalPadding = defaults.object(forKey: "layoutHorizontalPadding") as? Int ?? 5
         self.verticalPadding = defaults.object(forKey: "layoutVerticalPadding") as? Int ?? 0
