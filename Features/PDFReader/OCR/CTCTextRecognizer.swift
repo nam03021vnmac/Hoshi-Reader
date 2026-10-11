@@ -95,7 +95,11 @@ nonisolated struct CTCTextRecognizer {
         for batch in Self.batches(order.map { crops[$0].resizedWidth }, config: config) {
             let members = batch.map { order[$0] }
             let paddedWidth = Self.paddedWidth(members.map { crops[$0].resizedWidth }, config: config)
-            let (rows, classes) = try run(members.map { crops[$0] }, paddedWidth: paddedWidth)
+            // ORT's outputs are autoreleased; without a pool each batch's [N, T, classes] output (tens of MB)
+            // stays alive until the page is done, and the arena grows by one output per batch
+            let (rows, classes) = try autoreleasepool {
+                try run(members.map { crops[$0] }, paddedWidth: paddedWidth)
+            }
             try checkClasses(classes)
             for (row, cropIndex) in members.enumerated() {
                 lines[cropIndex] = line(for: crops[cropIndex], steps: rows[row], classes: classes, paddedWidth: paddedWidth)
