@@ -257,7 +257,7 @@ struct BookStorage {
         load(PDFInfo.self, from: root.appendingPathComponent(FileNames.pdfInfo))
     }
     
-    static func textLayerURL(root: URL, pageIndex: Int) -> URL {
+    nonisolated static func textLayerURL(root: URL, pageIndex: Int) -> URL {
         root.appendingPathComponent(FileNames.textLayerDirectory)
             .appendingPathComponent(String(format: "page-%05d.json", pageIndex))
     }

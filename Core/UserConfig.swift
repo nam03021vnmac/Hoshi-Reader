@@ -104,6 +104,14 @@ enum PDFDisplayMode: String, CaseIterable, Codable {
     case continuous = "Continuous"
 }
 
+nonisolated enum PDFOCRMode: String, CaseIterable, Codable, Sendable {
+    // only pages without a usable text layer
+    case auto = "Auto"
+    // ignore embedded text
+    case always = "Always"
+    case off = "Off"
+}
+
 @Observable
 class UserConfig {
     static let shared = UserConfig()
@@ -306,6 +314,10 @@ class UserConfig {
     
     var pdfPrefetchPages: Int {
         didSet { UserDefaults.standard.set(pdfPrefetchPages, forKey: "pdfPrefetchPages") }
+    }
+    
+    var pdfOCRMode: PDFOCRMode {
+        didSet { UserDefaults.standard.set(pdfOCRMode.rawValue, forKey: "pdfOCRMode") }
     }
     
     var pdfOCRModel: OCRModelPack {
@@ -578,6 +590,8 @@ class UserConfig {
             .flatMap(PDFDisplayMode.init) ?? .paged
         self.pdfRightToLeft = defaults.object(forKey: "pdfRightToLeft") as? Bool ?? true
         self.pdfPrefetchPages = defaults.object(forKey: "pdfPrefetchPages") as? Int ?? 2
+        self.pdfOCRMode = defaults.string(forKey: "pdfOCRMode")
+            .flatMap(PDFOCRMode.init) ?? .auto
         // a pack restored from a backup may not be supported on this device
         self.pdfOCRModel = defaults.string(forKey: "pdfOCRModel")
             .flatMap(OCRModelPack.init)

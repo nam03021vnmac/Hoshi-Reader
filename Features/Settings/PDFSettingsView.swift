@@ -23,6 +23,20 @@ struct PDFSettingsView: View {
                 Toggle("Right-to-Left Pages", isOn: $userConfig.pdfRightToLeft)
             }
 
+            Section {
+                Picker("OCR", selection: $userConfig.pdfOCRMode) {
+                    Text("Auto").tag(PDFOCRMode.auto)
+                    Text("Always").tag(PDFOCRMode.always)
+                    Text("Off").tag(PDFOCRMode.off)
+                }
+                
+                Stepper("Prefetch Pages: \(userConfig.pdfPrefetchPages)", value: $userConfig.pdfPrefetchPages, in: 0...5)
+                    .disabled(userConfig.pdfOCRMode == .off)
+            } header: {
+                Text("Text Recognition")
+            } footer: {
+                Text("Auto recognizes pages without a usable text layer. Always ignores embedded text. Prefetched pages are recognized ahead of time while reading.")
+            }
 
             Section {
                 Picker("Model", selection: $userConfig.pdfOCRModel) {

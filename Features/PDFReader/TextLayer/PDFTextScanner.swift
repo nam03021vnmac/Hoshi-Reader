@@ -27,13 +27,19 @@ nonisolated enum PDFTextScanner {
     private static let sentenceWindow = 500
 
     static func hitTest(_ layer: PDFTextLayer, point: CGPoint) -> PDFGlyphRef? {
-        if let hit = nearestGlyph(layer, point: point, ruby: false) {
-            return hit
+        // a direct hit on furigana wins: OCR main-line boxes usually include the ruby column
+        let ruby = nearestGlyph(layer, point: point, ruby: true)
+        if let inside = ruby.inside, let base = baseGlyph(for: inside, in: layer) {
+            return base
         }
-        guard let rubyHit = nearestGlyph(layer, point: point, ruby: true) else {
-            return nil
+        let main = nearestGlyph(layer, point: point, ruby: false)
+        if let inside = main.inside {
+            return inside
         }
-        return baseGlyph(for: rubyHit, in: layer)
+        if let nearest = main.nearest {
+            return nearest
+        }
+        return ruby.nearest.flatMap { baseGlyph(for: $0, in: layer) }
     }
 
     static func scan(_ layer: PDFTextLayer, from hit: PDFGlyphRef, maxLength: Int, scanNonJapaneseText: Bool) -> PDFScanResult? {
@@ -111,7 +117,7 @@ nonisolated enum PDFTextScanner {
         return (dx * dx + dy * dy).squareRoot()
     }
 
-    private static func nearestGlyph(_ layer: PDFTextLayer, point: CGPoint, ruby: Bool) -> PDFGlyphRef? {
+    private static func nearestGlyph(_ layer: PDFTextLayer, point: CGPoint, ruby: Bool) -> (inside: PDFGlyphRef?, nearest: PDFGlyphRef?) {
         var inside: (ref: PDFGlyphRef, distance: CGFloat)?
         var nearest: (ref: PDFGlyphRef, distance: CGFloat)?
 
@@ -136,21 +142,80 @@ nonisolated enum PDFTextScanner {
                 }
             }
         }
-        return inside?.ref ?? nearest?.ref
+        return (inside?.ref, nearest?.ref)
     }
 
+    /// First glyph of the base text under the tapped ruby run, so a furigana tap looks up the whole word
     private static func baseGlyph(for rubyRef: PDFGlyphRef, in layer: PDFTextLayer) -> PDFGlyphRef? {
         let ruby = layer.lines[rubyRef.line]
-        let center = CGPoint(x: ruby.glyphs[rubyRef.glyph].rect.midX, y: ruby.glyphs[rubyRef.glyph].rect.midY)
-        var best: (ref: PDFGlyphRef, distance: CGFloat)?
-        for (lineIndex, line) in layer.lines.enumerated() where !line.isRuby && line.blockIndex == ruby.blockIndex {
-            for (glyphIndex, glyph) in line.glyphs.enumerated() {
-                let d = distance(from: center, to: glyph.rect)
-                if best == nil || d < best!.distance {
-                    best = (PDFGlyphRef(line: lineIndex, glyph: glyphIndex), d)
-                }
-            }
+        let vertical = ruby.isVertical
+        // along-axis extent of the run around the tapped glyph; one OCR line can hold several runs
+        let maxGap = ruby.thickness
+        var first = rubyRef.glyph
+        var last = rubyRef.glyph
+        while first > 0, gap(ruby.glyphs[first - 1].rect, ruby.glyphs[first].rect, vertical: vertical) < maxGap {
+            first -= 1
         }
-        return best?.ref
+        while last < ruby.glyphs.count - 1, gap(ruby.glyphs[last].rect, ruby.glyphs[last + 1].rect, vertical: vertical) < maxGap {
+            last += 1
+        }
+        let run = ruby.glyphs[first...last].dropFirst().reduce(ruby.glyphs[first].rect) { $0.union($1.rect) }
+        let runRange = vertical ? run.minY...run.maxY : run.minX...run.maxX
+
+        // ruby goes right of vertical lines and above horizontal ones; the base line is the closest on that side
+        var base: (index: Int, distance: CGFloat)?
+        for (lineIndex, line) in layer.lines.enumerated() where !line.isRuby && line.blockIndex == ruby.blockIndex {
+            let lineRange = vertical ? line.bounds.minY...line.bounds.maxY : line.bounds.minX...line.bounds.maxX
+            guard lineRange.overlaps(runRange) else {
+                continue
+            }
+            let distance = vertical ? run.midX - line.bounds.midX : run.midY - line.bounds.midY
+            guard distance > 0, base == nil || distance < base!.distance else {
+                continue
+            }
+            base = (lineIndex, distance)
+        }
+        guard let base else {
+            return nil
+        }
+        // OCR ruby boxes drift along the line, so anchor on the base glyph nearest the run's center and
+        // extend back over the kanji it covers
+        let glyphs = layer.lines[base.index].glyphs
+        func along(_ rect: CGRect) -> ClosedRange<CGFloat> {
+            vertical ? rect.minY...rect.maxY : rect.minX...rect.maxX
+        }
+        let center = vertical ? run.midY : run.midX
+        func offset(_ index: Int) -> CGFloat {
+            abs((vertical ? glyphs[index].rect.midY : glyphs[index].rect.midX) - center)
+        }
+        guard let anchor = glyphs.indices.min(by: { offset($0) < offset($1) }) else {
+            return nil
+        }
+        guard isKanji(glyphs[anchor].character) else {
+            let first = glyphs.indices.first {
+                runRange.overlaps(along(glyphs[$0].rect)) && !JapaneseText.isScanBoundary(glyphs[$0].character, scanNonJapaneseText: true)
+            }
+            return PDFGlyphRef(line: base.index, glyph: first ?? anchor)
+        }
+        var start = anchor
+        while start > 0 {
+            let previous = along(glyphs[start - 1].rect)
+            let margin = 0.5 * (previous.upperBound - previous.lowerBound)
+            let reach = (runRange.lowerBound - margin)...(runRange.upperBound + margin)
+            guard isKanji(glyphs[start - 1].character), reach.overlaps(previous) else {
+                break
+            }
+            start -= 1
+        }
+        return PDFGlyphRef(line: base.index, glyph: start)
+    }
+
+    private static func isKanji(_ character: String) -> Bool {
+        character.unicodeScalars.first?.properties.isIdeographic ?? false
+    }
+
+    // along the reading axis, between consecutive glyphs
+    private static func gap(_ a: CGRect, _ b: CGRect, vertical: Bool) -> CGFloat {
+        vertical ? max(a.minY - b.maxY, b.minY - a.maxY) : max(b.minX - a.maxX, a.minX - b.maxX)
     }
 }

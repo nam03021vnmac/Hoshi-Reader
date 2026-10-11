@@ -656,10 +656,11 @@ nonisolated enum PDFTextScanner {
 ```
 
 **`hitTest`** (point in page space):
-1. Look at non-ruby lines first. For each glyph, inflate the rect by 10% of line thickness. If it contains the point, that's the hit.
-2. Otherwise take the **nearest** glyph (distance to rect) among non-ruby lines, if it's within `0.5 × line thickness`.
-3. Otherwise try ruby lines with the same rule, and map a ruby hit to the **closest main-line glyph**. Tapping furigana looks up the base word.
-4. Otherwise return `nil`.
+1. If the point is inside a ruby glyph (rect inflated by 10% of line thickness), map it to the **first glyph of its base word**. This comes first because OCR main-line boxes usually include the ruby column. Mapping: take the ruby run around the tapped glyph, then the nearest main line on the base side (left of vertical ruby, below horizontal ruby). Anchor on that line's glyph nearest the run's centre, then extend backwards over kanji that are within half a glyph of the run. OCR ruby boxes drift by up to about a glyph along the line, so plain overlap isn't enough.
+2. Otherwise, for non-ruby lines, inflate each glyph rect by 10% of line thickness. If one contains the point, that's the hit.
+3. Otherwise take the **nearest** glyph (distance to rect) among non-ruby lines, if it's within `0.5 × line thickness`.
+4. Otherwise apply rule 3 to ruby lines and map the result as in rule 1.
+5. Otherwise return `nil`.
 
 **`scan`** (mirrors `selectText`):
 1. If the hit glyph is a scan boundary, return `nil` (the caller treats this as a tap outside).

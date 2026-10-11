@@ -15,6 +15,7 @@ struct PDFReaderView: View {
     @Environment(UserConfig.self) private var userConfig
     @State private var viewModel: PDFReaderViewModel
     @State private var focusMode = false
+    @State private var confirmBookOCR = false
     @State private var topSafeArea: CGFloat
     @State private var bottomSafeArea: CGFloat
     
@@ -58,6 +59,10 @@ struct PDFReaderView: View {
     
     private var pageString: String {
         "\(viewModel.pageIndex + 1) / \(viewModel.pageCount)"
+    }
+    
+    private var ocrModelState: OCRModelStore.State {
+        OCRModelStore.shared.state(for: userConfig.pdfOCRModel)
     }
     
     private func handleTapOutside() {
@@ -165,6 +170,45 @@ struct PDFReaderView: View {
                 }
             }
         }
+        .overlay(alignment: .top) {
+            VStack(spacing: 8) {
+                if let progress = viewModel.bookOCRProgress {
+                    HStack(spacing: 10) {
+                        ProgressView(value: Double(progress.done), total: Double(max(progress.total, 1)))
+                            .frame(width: 80)
+                        Text("Recognizing pages \(progress.done) / \(progress.total)")
+                            .font(.caption)
+                            .monospacedDigit()
+                        Button {
+                            viewModel.cancelBookOCR()
+                        } label: {
+                            Image(systemName: "xmark")
+                                .font(.caption.weight(.semibold))
+                        }
+                        .buttonStyle(.plain)
+                    }
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 8)
+                    .conditionalGlassEffect()
+                }
+                if viewModel.isLoadingPage {
+                    HStack(spacing: 8) {
+                        ProgressView()
+                            .controlSize(.small)
+                        Text("Recognizing text…")
+                            .font(.caption)
+                    }
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 8)
+                    .conditionalGlassEffect()
+                    .allowsHitTesting(false)
+                    .transition(.opacity)
+                }
+            }
+            .foregroundStyle(infoStyle)
+            .padding(.top, topSafeArea + 8)
+            .animation(.default, value: viewModel.isLoadingPage)
+        }
         .overlay(alignment: .bottom) {
             if userConfig.readerAlwaysShowProgress && viewModel.document != nil {
                 Text(pageString)
@@ -212,6 +256,44 @@ struct PDFReaderView: View {
                             Label("Contents", systemImage: "list.bullet")
                         }
                         
+                        if viewModel.ocrEnabled {
+                            Section {
+                                Button {
+                                    viewModel.rerunOCR()
+                                } label: {
+                                    Label("Re-run OCR on This Page", systemImage: "arrow.clockwise")
+                                }
+                                .disabled(viewModel.isLoadingPage)
+                                
+                                Toggle(isOn: Binding(
+                                    get: { viewModel.forceOCR },
+                                    set: { viewModel.setForceOCR($0) }
+                                )) {
+                                    Label("Always Use OCR for This Book", systemImage: "text.viewfinder")
+                                }
+                                
+                                if viewModel.bookOCRProgress != nil {
+                                    Button(role: .destructive) {
+                                        viewModel.cancelBookOCR()
+                                    } label: {
+                                        Label("Stop OCR", systemImage: "stop.circle")
+                                    }
+                                } else {
+                                    Button {
+                                        confirmBookOCR = true
+                                    } label: {
+                                        Label("OCR All Pages…", systemImage: "doc.text.viewfinder")
+                                    }
+                                }
+                            }
+                        }
+                        
+                        #if DEBUG
+                        Toggle(isOn: $viewModel.showTextBoxes) {
+                            Label("Show Text Boxes", systemImage: "rectangle.dashed")
+                        }
+                        #endif
+                        
                         Button {
                             viewModel.activeSheet = .settings
                         } label: {
@@ -257,7 +339,44 @@ struct PDFReaderView: View {
                 }
                 .presentationDetents([.medium])
                 .preferredColorScheme(readerTheme)
+            case .ocrModel:
+                PDFOCRModelPrompt(pack: userConfig.pdfOCRModel) {
+                    viewModel.activeSheet = nil
+                }
+                .presentationDetents([.medium])
+                .preferredColorScheme(readerTheme)
             }
+        }
+        .confirmationDialog("OCR All Pages", isPresented: $confirmBookOCR, titleVisibility: .visible) {
+            Button("Start") {
+                viewModel.startBookOCR()
+            }
+        } message: {
+            Text("Recognizes text on every page without a text layer, so lookups are instant. This can take a while.")
+        }
+        .alert("OCR Failed", isPresented: Binding(
+            get: { viewModel.ocrError != nil },
+            set: { if !$0 { viewModel.ocrError = nil } }
+        )) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text(viewModel.ocrError ?? "")
+        }
+        .onChange(of: userConfig.pdfOCRMode) {
+            viewModel.refreshOCR()
+        }
+        .onChange(of: userConfig.pdfOCRModel) {
+            viewModel.refreshOCR()
+        }
+        .onChange(of: ocrModelState) {
+            viewModel.refreshOCR()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: UIApplication.didReceiveMemoryWarningNotification)) { _ in
+            viewModel.handleMemoryWarning()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: UIApplication.didEnterBackgroundNotification)) { _ in
+            // progress is on disk per page, so it resumes where it stopped
+            viewModel.cancelBookOCR()
         }
         .onReceive(NotificationCenter.default.publisher(for: UIApplication.willResignActiveNotification)) { _ in
             viewModel.saveBookmark()
@@ -265,7 +384,7 @@ struct PDFReaderView: View {
         }
         .onDisappear {
             viewModel.saveBookmark()
-            viewModel.flushTextLayers()
+            viewModel.close()
         }
         .ignoresSafeArea(edges: [.top, .bottom])
         .ignoresSafeArea(.keyboard)

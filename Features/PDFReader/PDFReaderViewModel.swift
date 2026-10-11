@@ -15,6 +15,7 @@ import CxxStdlib
 enum PDFReaderSheet: Identifiable {
     case contents
     case settings
+    case ocrModel
     
     var id: Self { self }
 }
@@ -30,6 +31,13 @@ final class PDFReaderViewModel {
     var activeSheet: PDFReaderSheet?
     var popups: [PopupItem] = []
     var isLoadingPage = false
+    var forceOCR: Bool
+    /// (done, total) while the whole book is being recognized
+    var bookOCRProgress: (done: Int, total: Int)?
+    var ocrError: String?
+    var showTextBoxes = false {
+        didSet { updateTextBoxes() }
+    }
     
     let maxSelectionLength = 16
     
@@ -39,6 +47,10 @@ final class PDFReaderViewModel {
     @ObservationIgnored private var currentScan: (pageIndex: Int, first: PDFGlyphRef)?
     @ObservationIgnored private var latestTapToken: UUID?
     @ObservationIgnored private var saveTask: Task<Void, Never>?
+    @ObservationIgnored private var bookOCRTask: Task<Void, Never>?
+    @ObservationIgnored private var ocrConfigurationKey: String?
+    // the model prompt opens by itself at most once per reader session
+    @ObservationIgnored private var ocrPromptShown = false
     
     var pageCount: Int {
         info?.pageCount ?? 0
@@ -62,6 +74,7 @@ final class PDFReaderViewModel {
             self.document = nil
             self.info = nil
             self.pageIndex = 0
+            self.forceOCR = false
             return
         }
         
@@ -76,11 +89,166 @@ final class PDFReaderViewModel {
         self.document = document
         self.info = info
         self.pageIndex = min(max(saved, 0), document.pageCount - 1)
+        self.forceOCR = info?.forceOCR ?? false
         
         if let info, let pdf = book.pdf {
-            let provider = PDFTextLayerProvider(pdfURL: root.appendingPathComponent(pdf), bookRoot: root, info: info)
+            let configuration = Self.ocrConfiguration()
+            ocrConfigurationKey = configuration.key
+            let provider = PDFTextLayerProvider(pdfURL: root.appendingPathComponent(pdf), bookRoot: root, info: info, configuration: configuration)
             self.textLayers = provider
             Task { await provider.prefetch(around: self.pageIndex, radius: UserConfig.shared.pdfPrefetchPages) }
+        }
+    }
+    
+    // MARK: OCR
+    
+    private static func ocrConfiguration() -> PDFOCRConfiguration {
+        let config = UserConfig.shared
+        let pack = config.pdfOCRModel
+        return PDFOCRConfiguration(
+            mode: config.pdfOCRMode,
+            engine: config.pdfOCRMode == .off ? nil : OCRModelStore.shared.engine(for: pack),
+            engineIdentifier: OCRModelManifest.engineIdentifier(for: pack)
+        )
+    }
+    
+    var ocrEnabled: Bool {
+        UserConfig.shared.pdfOCRMode != .off
+    }
+    
+    var isOCRModelInstalled: Bool {
+        OCRModelStore.shared.state(for: UserConfig.shared.pdfOCRModel) == .installed
+    }
+    
+    /// Picks up changes to the OCR mode, the selected pack, or a finished model download
+    func refreshOCR() {
+        let configuration = Self.ocrConfiguration()
+        guard configuration.key != ocrConfigurationKey, let textLayers else {
+            return
+        }
+        ocrConfigurationKey = configuration.key
+        if configuration.engine != nil && activeSheet == .ocrModel {
+            activeSheet = nil
+        }
+        let page = pageIndex
+        let radius = UserConfig.shared.pdfPrefetchPages
+        Task {
+            await textLayers.configure(configuration)
+            await textLayers.prefetch(around: page, radius: radius)
+            updateTextBoxes()
+        }
+    }
+    
+    func setForceOCR(_ value: Bool) {
+        forceOCR = value
+        clearSelection()
+        closePopups()
+        guard let textLayers else {
+            return
+        }
+        let page = pageIndex
+        let radius = UserConfig.shared.pdfPrefetchPages
+        Task {
+            await textLayers.setForceOCR(value)
+            await textLayers.prefetch(around: page, radius: radius)
+            updateTextBoxes()
+        }
+        if value && !isOCRModelInstalled {
+            activeSheet = .ocrModel
+        }
+    }
+    
+    func rerunOCR() {
+        guard let textLayers else {
+            return
+        }
+        guard isOCRModelInstalled else {
+            activeSheet = .ocrModel
+            return
+        }
+        let page = pageIndex
+        let token = UUID()
+        latestTapToken = token
+        clearSelection()
+        closePopups()
+        isLoadingPage = true
+        Task {
+            do {
+                let layer = try await textLayers.rebuildWithOCR(pageIndex: page)
+                if showTextBoxes {
+                    highlightProvider?.setBoxes(PDFTextBoxes(layer: layer), pageIndex: page)
+                }
+            } catch is CancellationError {
+            } catch {
+                ocrError = error.localizedDescription
+            }
+            if latestTapToken == token {
+                isLoadingPage = false
+            }
+        }
+    }
+    
+    func startBookOCR() {
+        guard let textLayers, bookOCRTask == nil else {
+            return
+        }
+        guard isOCRModelInstalled else {
+            activeSheet = .ocrModel
+            return
+        }
+        bookOCRProgress = (0, pageCount)
+        bookOCRTask = Task {
+            do {
+                try await textLayers.ocrAllPages { [self] done, total in
+                    Task { @MainActor in
+                        guard let progress = self.bookOCRProgress, done > progress.done else {
+                            return
+                        }
+                        self.bookOCRProgress = (done, total)
+                    }
+                }
+            } catch is CancellationError {
+            } catch {
+                ocrError = error.localizedDescription
+            }
+            bookOCRTask = nil
+            bookOCRProgress = nil
+        }
+    }
+    
+    func cancelBookOCR() {
+        bookOCRTask?.cancel()
+    }
+    
+    func handleMemoryWarning() {
+        guard let textLayers else {
+            return
+        }
+        Task { await textLayers.clearMemoryCache() }
+    }
+    
+    func close() {
+        bookOCRTask?.cancel()
+        guard let textLayers else {
+            return
+        }
+        Task { await textLayers.cancelAll() }
+    }
+    
+    private func updateTextBoxes() {
+        guard showTextBoxes else {
+            highlightProvider?.clearBoxes()
+            return
+        }
+        guard let textLayers else {
+            return
+        }
+        let page = pageIndex
+        Task {
+            guard let layer = try? await textLayers.layer(for: page), showTextBoxes else {
+                return
+            }
+            highlightProvider?.setBoxes(PDFTextBoxes(layer: layer), pageIndex: page)
         }
     }
     
@@ -99,6 +267,7 @@ final class PDFReaderViewModel {
             let radius = UserConfig.shared.pdfPrefetchPages
             Task { await textLayers.prefetch(around: index, radius: radius, forward: forward) }
         }
+        updateTextBoxes()
     }
     
     func viewportChanged() {
@@ -121,18 +290,48 @@ final class PDFReaderViewModel {
         }
         let token = UUID()
         latestTapToken = token
+        isLoadingPage = false
         
         var cached = await textLayers.cachedLayer(for: tappedPage)
         if cached == nil {
-            isLoadingPage = true
-            cached = try? await textLayers.layer(for: tappedPage)
+            // disk cache hits are fast, only show the indicator once it's clearly OCR
+            let indicator = Task {
+                try await Task.sleep(for: .milliseconds(150))
+                if latestTapToken == token {
+                    isLoadingPage = true
+                }
+            }
+            do {
+                cached = try await textLayers.layer(for: tappedPage)
+            } catch OCRError.modelNotInstalled {
+                if latestTapToken == token && !ocrPromptShown && activeSheet == nil {
+                    ocrPromptShown = true
+                    activeSheet = .ocrModel
+                    indicator.cancel()
+                    isLoadingPage = false
+                    return true
+                }
+            } catch is CancellationError {
+            } catch {
+                if latestTapToken == token {
+                    ocrError = error.localizedDescription
+                }
+            }
+            indicator.cancel()
             if latestTapToken == token {
                 isLoadingPage = false
             }
         }
         // the user tapped elsewhere or turned the page meanwhile
-        guard latestTapToken == token, let layer = cached else {
+        guard latestTapToken == token else {
             return true
+        }
+        guard let layer = cached else {
+            clearSelection()
+            return false
+        }
+        if showTextBoxes {
+            highlightProvider?.setBoxes(PDFTextBoxes(layer: layer), pageIndex: tappedPage)
         }
         
         guard let hit = PDFTextScanner.hitTest(layer, point: point),
