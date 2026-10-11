@@ -6,8 +6,8 @@
 #  Copyright © 2026 Manhhao.
 #  SPDX-License-Identifier: GPL-3.0-or-later
 #
-#  Downloads the pinned PaddleOCR ONNX models from Hugging Face, verifies them, and assembles
-#  the model packs the app downloads (det.onnx, rec.onnx, dict.txt, params.json).
+#  Downloads the pinned PaddleOCR ONNX models and the manga recognizer from Hugging Face, verifies
+#  them, and assembles the model packs the app downloads (det.onnx, rec.onnx, dict.txt, params.json).
 #
 #  Usage: Scripts/ocr/fetch_models.sh [out_dir]          (default: Scripts/ocr/build)
 #
@@ -42,11 +42,17 @@ MODELS=(
     "PP-OCRv5_mobile_rec_onnx|ed152b8b495f84de93cda5709d768548a9127622|da72dc72ca4dc220df0dfde68c1dedc31c58d3e76a25871122e5056227d50092"
 )
 
-# pack|det repo|rec repo
+# Kellenok's manga fine-tune of the PP-OCRv6 small recognizer (Apache-2.0), file|revision|sha256.
+# The repo has no inference.yml, but preprocessing and dictionary match PP-OCRv6_small_rec, so the
+# pack reuses that one.
+MANGA_REC="rec/manga_rec_v0.2.onnx|8ee29e094b6aac77dd067c70805438782fa16ab0|de12c84c63e62c80339e882e675983d886670dcb6f0147e1ed041afd6fa81888"
+
+# pack|det dir|rec dir[|model name]
 PACKS=(
     "ppocrv6-small|PP-OCRv6_small_det_onnx|PP-OCRv6_small_rec_onnx"
     "ppocrv6-medium|PP-OCRv6_medium_det_onnx|PP-OCRv6_medium_rec_onnx"
     "ppocrv5-mobile|PP-OCRv5_mobile_det_onnx|PP-OCRv5_mobile_rec_onnx"
+    "ppocrv6-manga|PP-OCRv6_small_det_onnx|PP-OCRv6_manga_rec|PP-OCRv6_manga"
 )
 
 if [ ! -x "$VENV/bin/python" ]; then
@@ -74,10 +80,27 @@ for entry in "${MODELS[@]}"; do
     fi
 done
 
+IFS="|" read -r file revision sha <<< "$MANGA_REC"
+dir="$CACHE/PP-OCRv6_manga_rec"
+mkdir -p "$dir"
+if [ ! -f "$dir/inference.onnx" ]; then
+    echo "downloading Kellenok/PP-OCRv6_manga/$file"
+    curl --fail --location --silent --show-error \
+        "https://huggingface.co/Kellenok/PP-OCRv6_manga/resolve/$revision/$file" -o "$dir/inference.onnx.part"
+    mv "$dir/inference.onnx.part" "$dir/inference.onnx"
+fi
+actual="$(shasum -a 256 "$dir/inference.onnx" | cut -d' ' -f1)"
+if [ "$actual" != "$sha" ]; then
+    echo "checksum mismatch for PP-OCRv6_manga/$file: $actual" >&2
+    exit 1
+fi
+cp "$CACHE/PP-OCRv6_small_rec_onnx/inference.yml" "$dir/inference.yml"
+
 mkdir -p "$OUT/release"
 for entry in "${PACKS[@]}"; do
-    IFS="|" read -r pack det rec <<< "$entry"
-    "$VENV/bin/python" -I "$SCRIPT_DIR/make_pack.py" --det-dir "$CACHE/$det" --rec-dir "$CACHE/$rec" --name "$pack" --out "$OUT"
+    IFS="|" read -r pack det rec model <<< "$entry"
+    "$VENV/bin/python" -I "$SCRIPT_DIR/make_pack.py" --det-dir "$CACHE/$det" --rec-dir "$CACHE/$rec" --name "$pack" --out "$OUT" \
+        ${model:+--model "$model"}
     for file in det.onnx rec.onnx dict.txt params.json; do
         cp "$OUT/$pack/$file" "$OUT/release/$pack-$file"
     done

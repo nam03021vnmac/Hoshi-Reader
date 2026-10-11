@@ -73,7 +73,7 @@ struct PDFReaderView: View {
     }
     
     private var ocrModelState: OCRModelStore.State {
-        OCRModelStore.shared.state(for: userConfig.pdfOCRModel)
+        OCRModelStore.shared.state(for: viewModel.ocrPack)
     }
     
     private func handleTapOutside() {
@@ -311,6 +311,13 @@ struct PDFReaderView: View {
                                     Label("Always Use OCR for This Book", systemImage: "text.viewfinder")
                                 }
                                 
+                                Toggle(isOn: Binding(
+                                    get: { viewModel.isManga },
+                                    set: { viewModel.setManga($0) }
+                                )) {
+                                    Label("Use Manga Model for This Book", systemImage: "book.pages")
+                                }
+                                
                                 if viewModel.bookOCRProgress != nil {
                                     Button(role: .destructive) {
                                         viewModel.cancelBookOCR()
@@ -382,7 +389,7 @@ struct PDFReaderView: View {
                 PDFStatisticsSheet(viewModel: viewModel)
                     .preferredColorScheme(readerTheme)
             case .ocrModel:
-                PDFOCRModelPrompt(pack: userConfig.pdfOCRModel) {
+                PDFOCRModelPrompt(pack: viewModel.ocrPack) {
                     viewModel.activeSheet = nil
                 }
                 .presentationDetents([.medium])

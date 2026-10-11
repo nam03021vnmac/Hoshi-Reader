@@ -470,6 +470,7 @@ nonisolated enum OCRModelPack: String, CaseIterable, Codable, Sendable {
     case v6Small  = "ppocrv6-small"       // default
     case v6Medium = "ppocrv6-medium"      // "High accuracy", gated by RAM
     case v5Mobile = "ppocrv5-mobile"      // fallback (vertical-text gate, §7.3)
+    case v6Manga  = "ppocrv6-manga"       // v6 small det + Kellenok's manga rec, only for books marked as manga
 
     static let minimumMemoryForMedium: UInt64 = 8 * 1024 * 1024 * 1024
     var isSupportedOnThisDevice: Bool {
@@ -498,8 +499,9 @@ final class OCRModelStore {
 }
 ```
 - **The selected pack** is `UserConfig.pdfOCRModel` (§10), which defaults to `.v6Small`. If the selected pack isn't installed, the reader shows the download prompt (§12), and the prompt states the pack's size from the manifest.
+- **Manga pack.** `.v6Manga` pairs the v6 small detector with [Kellenok/PP-OCRv6_manga](https://huggingface.co/Kellenok/PP-OCRv6_manga)'s `manga_rec_v0.2` (a manga fine-tune of the v6 small recognizer, Apache-2.0; same dictionary, preprocessing and `params.json` as v6 small). It isn't offered in the settings picker. A book uses it instead of the selected pack when `PDFInfo.isManga` is set ("Use Manga Model for This Book" in the reader menu). Its own detector (`manga_det_v0.2`) isn't used: on book pages it misses or truncates most ruby and clips sentence-final 。.
 - **Switching packs** doesn't delete cached OCR pages. Each cached layer records `engine`, and the provider (§6) treats a layer from a different engine as stale and re-OCRs that page lazily when it's next needed. Offer "Delete the old model" after a successful switch.
-- **Hosting.** `det.onnx` and `rec.onnx` download straight from PaddlePaddle's Hugging Face repos, **pinned to a commit** (`/resolve/<commit>/inference.onnx`) and verified against SHA-256, so they can't change underneath the app. `dict.txt` and `params.json` are derived files that Hugging Face doesn't host, so they ship in the app bundle (`Features/PDFReader/OCR/Packs/<pack>-dict.txt`, `<pack>-params.json`, about 75 KB per pack); `fetch_models.sh` regenerates them. The `ocr-models-v1` GitHub release originally planned here was never published (its URLs returned 404). If the packs are ever self-hosted, `fetch_models.sh` still writes the flat `release/` copies.
+- **Hosting.** `det.onnx` and `rec.onnx` download straight from PaddlePaddle's Hugging Face repos (and Kellenok/PP-OCRv6_manga for the manga recognizer), **pinned to a commit** (`/resolve/<commit>/inference.onnx`) and verified against SHA-256, so they can't change underneath the app. `dict.txt` and `params.json` are derived files that Hugging Face doesn't host, so they ship in the app bundle (`Features/PDFReader/OCR/Packs/<pack>-dict.txt`, `<pack>-params.json`, about 75 KB per pack); `fetch_models.sh` regenerates them. The `ocr-models-v1` GitHub release originally planned here was never published (its URLs returned 404). If the packs are ever self-hosted, `fetch_models.sh` still writes the flat `release/` copies.
 - **Dev fallback:** `installedPaths(for:)` checks `Bundle.main` for `<pack>/det.onnx` etc. before Application Support. Developers can drop the files into the project locally without committing them; add them to `.gitignore`.
 - Mark the model directories `isExcludedFromBackup = true` (`URLResourceValues`).
 
@@ -538,7 +540,7 @@ Render size for OCR: **long side 2048 px** (default). Japanese body text in a sc
 
 Files: `PaddleOCREngine.swift` (actor, owns ORT sessions), `DBTextDetector.swift`, `CTCTextRecognizer.swift`, `ImageTensor.swift` (pixel access and resizing helpers), `OCRParams.swift` (decodes `params.json`).
 
-`PaddleOCREngine` is created for one `OCRModelPack`, and its `identifier` is `OCRModelManifest.engineIdentifier(for:)`. The same Swift pipeline serves all three packs; only the files and `params.json` differ. **The numeric constants below are PaddleOCR v5 defaults.** Use them only when `params.json` lacks a value, and log a warning when that happens.
+`PaddleOCREngine` is created for one `OCRModelPack`, and its `identifier` is `OCRModelManifest.engineIdentifier(for:)`. The same Swift pipeline serves all packs; only the files and `params.json` differ. **The numeric constants below are PaddleOCR v5 defaults.** Use them only when `params.json` lacks a value, and log a warning when that happens.
 
 > **Check first (v6):** v6 changed the det neck and loss. Before writing post-processing, confirm that the v6 det ONNX output is still a single-channel probability map `[1, 1, H, W]` with values in [0, 1]. Run the model once in `reference.py` and save the map as a PNG. If it outputs logits, apply a sigmoid first. If the shape is different, stop and update this section before continuing.
 
@@ -833,7 +835,7 @@ Add to [Core/UserConfig.swift](Core/UserConfig.swift), following the existing `d
 | `pdfRightToLeft` | `Bool` | `true` | RTL page order (Japanese) |
 | `pdfOCRMode` | `PDFOCRMode { auto, always, off }` | `.auto` | `auto`: OCR only pages without a usable text layer. `always`: ignore embedded text. `off`: never OCR. |
 | `pdfPrefetchPages` | `Int` | `2` | Pages to pre-OCR ahead and behind |
-| `pdfOCRModel` | `OCRModelPack` (§7.4) | `.v6Small` | Which OCR model pack to use. `.v6Medium` is shown only when `isSupportedOnThisDevice`. If a stored `.v6Medium` isn't supported on this device (e.g. restored from a backup), fall back to `.v6Small`. |
+| `pdfOCRModel` | `OCRModelPack` (§7.4) | `.v6Small` | Which OCR model pack to use. `.v6Medium` is shown only when `isSupportedOnThisDevice`. If a stored `.v6Medium` isn't supported on this device (e.g. restored from a backup), fall back to `.v6Small`. Never `.v6Manga`, which is picked per book (§7.4). |
 
 UI: new `Features/Settings/PDFSettingsView.swift`, linked from [AdvancedView.swift](Features/Settings/AdvancedView.swift) as "PDF". It includes the settings above and an **OCR model** section: a picker for the pack ("Standard (PP-OCRv6 small)", "High accuracy (PP-OCRv6 medium)" on capable devices, and "Legacy (PP-OCRv5 mobile)"), and for each pack its status, download size, a Download/Delete button and a progress bar. Under "High accuracy", add a footnote that it's slower and a larger download. The same view is presented as a sheet from the reader menu.
 

@@ -9,7 +9,7 @@
 #  Assembles one OCR model pack (det.onnx, rec.onnx, dict.txt, params.json) from PaddleOCR
 #  ONNX exports and their inference.yml files. Called by fetch_models.sh.
 #
-#  Usage: make_pack.py --det-dir DIR --rec-dir DIR --name ppocrv6-small --out OUT_DIR
+#  Usage: make_pack.py --det-dir DIR --rec-dir DIR --name ppocrv6-small --out OUT_DIR [--model NAME]
 #
 
 import argparse
@@ -107,6 +107,7 @@ def main():
     parser.add_argument("--rec-dir", required=True, type=Path)
     parser.add_argument("--name", required=True)
     parser.add_argument("--out", required=True, type=Path)
+    parser.add_argument("--model", help="params.json model name, defaults to the det model's")
     args = parser.parse_args()
 
     ort.set_default_logger_severity(3)
@@ -128,7 +129,7 @@ def main():
     with open(pack / "dict.txt", "w", encoding="utf-8", newline="\n") as f:
         f.write("".join(c + "\n" for c in characters))
     params = {
-        "model": det_config["Global"]["model_name"].removesuffix("_det"),
+        "model": args.model or det_config["Global"]["model_name"].removesuffix("_det"),
         "det": det_params(det_config),
         "rec": rec_params(rec_config, classes, len(characters)),
     }

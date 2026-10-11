@@ -41,7 +41,7 @@ struct PDFSettingsView: View {
 
             Section {
                 Picker("Model", selection: $userConfig.pdfOCRModel) {
-                    ForEach(OCRModelPack.supported) { pack in
+                    ForEach(OCRModelPack.selectable) { pack in
                         Text(pack.title).tag(pack)
                     }
                 }
@@ -124,6 +124,11 @@ private struct OCRModelRow: View {
                         .foregroundStyle(.secondary)
                     if pack == .v6Medium {
                         Text("Slower and a larger download")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                    if pack.isForManga {
+                        Text("Only used for books set to the manga model in the reader menu")
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }
