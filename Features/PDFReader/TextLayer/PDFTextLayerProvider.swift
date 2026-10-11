@@ -106,12 +106,18 @@ actor PDFTextLayerProvider {
         try? FileManager.default.removeItem(at: BookStorage.textLayerURL(root: bookRoot, pageIndex: pageIndex))
         cache[pageIndex] = nil
         recency.removeAll { $0 == pageIndex }
+        inFlight[pageIndex]?.cancel()
         inFlight[pageIndex] = nil
 
         let generation = generation
         let layer = try await Task(priority: .userInitiated) {
             try await self.build(pageIndex: pageIndex, forceOCR: true)
         }.value
+        // later builds keep the OCR layer instead of going back to the embedded text
+        if info.ocrPages.insert(pageIndex).inserted {
+            infoDirty = true
+            flushInfo()
+        }
         if generation == self.generation {
             store(layer, pageIndex: pageIndex)
         }
@@ -124,6 +130,11 @@ actor PDFTextLayerProvider {
         prefetchTask?.cancel()
         prefetchTask = nil
         guard radius > 0 else {
+            // no look-ahead, but still prepare the current page if that doesn't take OCR, so it counts toward statistics
+            if cache[pageIndex] == nil, inFlight[pageIndex] == nil,
+               let layer = buildWithoutOCR(pageIndex: pageIndex, forceOCR: false) {
+                store(layer, pageIndex: pageIndex)
+            }
             return
         }
         var wanted: [Int] = [pageIndex]
@@ -154,7 +165,15 @@ actor PDFTextLayerProvider {
             while ProcessInfo.processInfo.thermalState.rawValue >= ProcessInfo.ThermalState.serious.rawValue {
                 try await Task.sleep(for: .seconds(5))
             }
-            _ = try await layer(for: index, priority: .utility)
+            // a settings change cancels in-flight builds, retry the page with the new configuration
+            while true {
+                do {
+                    _ = try await layer(for: index, priority: .utility)
+                    break
+                } catch is CancellationError {
+                    try Task.checkCancellation()
+                }
+            }
             progress(index + 1, count)
         }
         flushInfo()
@@ -190,6 +209,8 @@ actor PDFTextLayerProvider {
 
     private func invalidateMemory() {
         generation += 1
+        // builds for the old configuration would still run OCR and write their results
+        inFlight.values.forEach { $0.cancel() }
         inFlight.removeAll()
         prefetchTask?.cancel()
         prefetchTask = nil
@@ -197,25 +218,11 @@ actor PDFTextLayerProvider {
     }
 
     private func build(pageIndex: Int, forceOCR: Bool) async throws -> PDFTextLayer {
-        guard let page = document?.page(at: pageIndex) else {
-            return .empty(pageIndex: pageIndex)
-        }
-        let configuration = configuration
-        let ignoreEmbedded = forceOCR || (configuration.mode != .off && (info.forceOCR || configuration.mode == .always))
-        if !ignoreEmbedded,
-           let layer = EmbeddedTextExtractor.extract(page: page, pageIndex: pageIndex),
-           EmbeddedTextQuality.isUsable(layer, pageBounds: page.bounds(for: .cropBox)) {
-            // extraction is cheap and deterministic, so it isn't written to disk
-            record(.embedded, characterCount: layer.characterCount, pageIndex: pageIndex)
+        if let layer = buildWithoutOCR(pageIndex: pageIndex, forceOCR: forceOCR) {
             return layer
         }
-        if configuration.mode == .off && !forceOCR {
+        guard let page = document?.page(at: pageIndex) else {
             return .empty(pageIndex: pageIndex)
-        }
-
-        if !forceOCR, let cached = loadFromDisk(pageIndex: pageIndex, configuration: configuration) {
-            record(cached.source, characterCount: cached.characterCount, pageIndex: pageIndex)
-            return cached
         }
         guard let engine = configuration.engine else {
             throw OCRError.modelNotInstalled
@@ -230,6 +237,8 @@ actor PDFTextLayerProvider {
             throw OCRError.inference("could not render the page")
         }
         let lines = try await engine.recognize(rendered.image)
+        // the configuration changed meanwhile, don't save a stale layer
+        try Task.checkCancellation()
         let layer = OCRTextLayerBuilder.layer(from: lines, pixelToPage: rendered.pixelToPage, pageIndex: pageIndex, engine: engine.identifier)
         #if DEBUG
         OCRLog.logger.debug("page \(pageIndex + 1): \(layer.characterCount) characters in \((clock.now - start).milliseconds) ms")
@@ -238,6 +247,30 @@ actor PDFTextLayerProvider {
         saveToDisk(layer)
         record(layer.source, characterCount: layer.characterCount, pageIndex: pageIndex)
         return layer
+    }
+
+    /// Embedded text, the disk cache, or an empty layer when OCR is off. nil if the page needs OCR.
+    private func buildWithoutOCR(pageIndex: Int, forceOCR: Bool) -> PDFTextLayer? {
+        guard let page = document?.page(at: pageIndex) else {
+            return .empty(pageIndex: pageIndex)
+        }
+        let preferOCR = info.forceOCR || configuration.mode == .always || info.ocrPages.contains(pageIndex)
+        let ignoreEmbedded = forceOCR || (configuration.mode != .off && preferOCR)
+        if !ignoreEmbedded,
+           let layer = EmbeddedTextExtractor.extract(page: page, pageIndex: pageIndex),
+           EmbeddedTextQuality.isUsable(layer, pageBounds: page.bounds(for: .cropBox)) {
+            // extraction is cheap and deterministic, so it isn't written to disk
+            record(.embedded, characterCount: layer.characterCount, pageIndex: pageIndex)
+            return layer
+        }
+        if configuration.mode == .off && !forceOCR {
+            return .empty(pageIndex: pageIndex)
+        }
+        if !forceOCR, let cached = loadFromDisk(pageIndex: pageIndex, configuration: configuration) {
+            record(cached.source, characterCount: cached.characterCount, pageIndex: pageIndex)
+            return cached
+        }
+        return nil
     }
 
     private func loadFromDisk(pageIndex: Int, configuration: PDFOCRConfiguration) -> PDFTextLayer? {

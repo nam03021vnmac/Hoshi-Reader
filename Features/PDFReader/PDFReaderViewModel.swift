@@ -230,9 +230,14 @@ final class PDFReaderViewModel {
     func close() {
         bookOCRTask?.cancel()
         guard let textLayers else {
+            OCRModelStore.shared.releaseEngineSessions()
             return
         }
-        Task { await textLayers.cancelAll() }
+        Task {
+            await textLayers.cancelAll()
+            // the models take tens to hundreds of MB, they reload on the next OCR request
+            OCRModelStore.shared.releaseEngineSessions()
+        }
     }
     
     private func updateTextBoxes() {

@@ -51,6 +51,8 @@ actor PaddleOCREngine: OCREngine {
     }
 
     func recognize(_ image: CGImage) async throws -> [OCRLine] {
+        // requests queue up on the actor, skip ones cancelled meanwhile (e.g. the reader closed and released the sessions)
+        try Task.checkCancellation()
         let (lines, timings) = try recognizeWithTimings(image)
         #if DEBUG
         OCRLog.logger.debug("\(self.identifier, privacy: .public): \(lines.count) lines, det \(timings.detection.milliseconds) ms, rec \(timings.recognition.milliseconds) ms")
