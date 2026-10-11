@@ -376,7 +376,7 @@ struct PDFReaderView: View {
                             }
                         }
                 }
-                .presentationDetents([.medium])
+                .presentationDetents([.large])
                 .preferredColorScheme(readerTheme)
             case .statistics:
                 PDFStatisticsSheet(viewModel: viewModel)

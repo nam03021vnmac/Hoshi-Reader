@@ -1015,6 +1015,17 @@
         }
       }
     },
+    "Delete %@?" : {
+      "comment" : "Context: Settings > Advanced > PDF. Surrounding UI is a grouped form for PDF display and OCR (text recognition) options.",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "删除%@？"
+          }
+        }
+      }
+    },
     "Delete %lld book(s)?" : {
       "comment" : "Context: Bookshelf and shelf management. Surrounding UI includes book lists, empty states, shelf actions, sort controls, and book context-menu confirmations.",
       "localizations" : {
@@ -1149,6 +1160,17 @@
     },
     "Download failed (HTTP %lld)" : {
 
+    },
+    "Downloading…" : {
+      "comment" : "Context: Settings > Advanced > PDF. Surrounding UI is a grouped form for PDF display and OCR (text recognition) options.",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "正在下载…"
+          }
+        }
+      }
     },
     "Enable" : {
       "comment" : "Context: Shared Hoshi Reader label or action. Surrounding UI may be a settings row, alert button, toolbar item, or reader context menu.",
@@ -1524,6 +1546,17 @@
         }
       }
     },
+    "Keep" : {
+      "comment" : "Context: Settings > Advanced > PDF. Surrounding UI is a grouped form for PDF display and OCR (text recognition) options.",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "保留"
+          }
+        }
+      }
+    },
     "Keep Volume" : {
       "comment" : "Context: Settings > Audio. Surrounding UI manages Yomitan JSON audio sources, local audio database import, autoplay, and background audio behavior.",
       "localizations" : {
@@ -1875,6 +1908,17 @@
         }
       }
     },
+    "Not Downloaded" : {
+      "comment" : "Context: Settings > Advanced > PDF. Surrounding UI is a grouped form for PDF display and OCR (text recognition) options.",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "未下载"
+          }
+        }
+      }
+    },
     "Not Now" : {
 
     },
@@ -1981,6 +2025,17 @@
     },
     "Paged" : {
 
+    },
+    "Pages recognized with the previous model are recognized again with the new one as you read." : {
+      "comment" : "Context: Settings > Advanced > PDF. Surrounding UI is a grouped form for PDF display and OCR (text recognition) options.",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "用之前模型识别的页面会在阅读时用新模型重新识别。"
+          }
+        }
+      }
     },
     "Paginated" : {
       "comment" : "Context: Settings > Appearance. Surrounding UI is a grouped form for reader theme, text, layout, display, and popup controls.",
@@ -2531,6 +2586,17 @@
         }
       }
     },
+    "Slower and a larger download" : {
+      "comment" : "Context: Settings > Advanced > PDF. Surrounding UI is a grouped form for PDF display and OCR (text recognition) options.",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "速度较慢，下载体积较大"
+          }
+        }
+      }
+    },
     "Sort" : {
       "comment" : "Context: Bookshelf and shelf management. Surrounding UI includes book lists, empty states, shelf actions, sort controls, and book context-menu confirmations.",
       "localizations" : {
@@ -2971,11 +3037,16 @@
         }
       }
     },
-    "Used for scanned pages without a text layer." : {
-
-    },
-    "Used for scanned pages without a text layer. High accuracy is slower and a larger download." : {
-
+    "Used for scanned pages without a text layer. Recognized pages are saved, so each page is only recognized once." : {
+      "comment" : "Context: Settings > Advanced > PDF. Surrounding UI is a grouped form for PDF display and OCR (text recognition) options.",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "用于没有文本层的扫描页面。识别结果会被保存，因此每页只需识别一次。"
+          }
+        }
+      }
     },
     "Version" : {
       "comment" : "Context: Settings > About. Surrounding UI shows app version, GitHub/privacy links, dependency licenses, and attribution sections.",

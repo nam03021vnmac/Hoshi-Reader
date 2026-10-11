@@ -10,6 +10,7 @@ import SwiftUI
 
 struct PDFSettingsView: View {
     @Environment(UserConfig.self) private var userConfig
+    @State private var previousPack: OCRModelPack?
 
     var body: some View {
         @Bindable var userConfig = userConfig
@@ -51,11 +52,7 @@ struct PDFSettingsView: View {
             } header: {
                 Text("OCR Model")
             } footer: {
-                if OCRModelPack.v6Medium.isSupportedOnThisDevice {
-                    Text("Used for scanned pages without a text layer. High accuracy is slower and a larger download.")
-                } else {
-                    Text("Used for scanned pages without a text layer.")
-                }
+                Text("Used for scanned pages without a text layer. Recognized pages are saved, so each page is only recognized once.")
             }
 
             #if DEBUG
@@ -70,6 +67,31 @@ struct PDFSettingsView: View {
         .onAppear {
             OCRModelStore.shared.refresh()
         }
+        .onChange(of: userConfig.pdfOCRModel) { old, _ in
+            if OCRModelStore.shared.state(for: old) == .installed {
+                previousPack = old
+            }
+        }
+        .confirmationDialog(
+            "Delete \(previousPack?.title ?? "")?",
+            isPresented: Binding(
+                get: { previousPack != nil },
+                set: { if !$0 { previousPack = nil } }
+            ),
+            titleVisibility: .visible
+        ) {
+            Button("Delete", role: .destructive) {
+                if let previousPack {
+                    OCRModelStore.shared.delete(previousPack)
+                }
+                previousPack = nil
+            }
+            Button("Keep", role: .cancel) {
+                previousPack = nil
+            }
+        } message: {
+            Text("Pages recognized with the previous model are recognized again with the new one as you read.")
+        }
     }
 }
 
@@ -77,14 +99,34 @@ private struct OCRModelRow: View {
     let pack: OCRModelPack
     private var store: OCRModelStore { OCRModelStore.shared }
 
+    private var size: String {
+        ByteCountFormatter.string(fromByteCount: Int64(OCRModelManifest.totalBytes(for: pack)), countStyle: .file)
+    }
+
+    private var status: String {
+        switch store.state(for: pack) {
+        case .installed:
+            String(localized: "Installed")
+        case .downloading:
+            String(localized: "Downloading…")
+        case .notInstalled, .failed:
+            String(localized: "Not Downloaded")
+        }
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             HStack {
                 VStack(alignment: .leading, spacing: 2) {
                     Text(pack.title)
-                    Text(ByteCountFormatter.string(fromByteCount: Int64(OCRModelManifest.totalBytes(for: pack)), countStyle: .file))
+                    Text("\(status) · \(size)")
                         .font(.caption)
                         .foregroundStyle(.secondary)
+                    if pack == .v6Medium {
+                        Text("Slower and a larger download")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
                 }
                 Spacer()
                 switch store.state(for: pack) {
