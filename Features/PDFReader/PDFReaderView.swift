@@ -60,32 +60,101 @@ struct PDFReaderView: View {
         "\(viewModel.pageIndex + 1) / \(viewModel.pageCount)"
     }
     
+    private func handleTapOutside() {
+        viewModel.clearSelection()
+        if viewModel.popups.isEmpty {
+            withAnimation(.default.speed(2)) {
+                focusMode.toggle()
+            }
+        } else {
+            viewModel.closePopups()
+        }
+    }
+    
     var body: some View {
         ZStack {
             readerBackgroundColor.ignoresSafeArea()
             
             if let document = viewModel.document {
-                PDFKitView(
-                    document: document,
-                    initialPage: viewModel.pageIndex,
-                    displayMode: userConfig.pdfDisplayMode,
-                    rightToLeft: userConfig.pdfRightToLeft,
-                    onPageChanged: { index in
-                        viewModel.pageChanged(to: index)
-                        if !focusMode {
-                            withAnimation(.default.speed(2)) {
-                                focusMode = true
+                GeometryReader { geometry in
+                    ZStack {
+                        PDFKitView(
+                            document: document,
+                            initialPage: viewModel.pageIndex,
+                            displayMode: userConfig.pdfDisplayMode,
+                            rightToLeft: userConfig.pdfRightToLeft,
+                            onPageChanged: { index in
+                                viewModel.pageChanged(to: index)
+                                if !focusMode {
+                                    withAnimation(.default.speed(2)) {
+                                        focusMode = true
+                                    }
+                                }
+                            },
+                            onPageTap: { index, point in
+                                Task {
+                                    if await !viewModel.handlePageTap(pageIndex: index, point: point) {
+                                        handleTapOutside()
+                                    }
+                                }
+                            },
+                            onTapOutside: {
+                                handleTapOutside()
+                            },
+                            onViewportChanged: {
+                                viewModel.viewportChanged()
+                            },
+                            onViewCreated: { pdfView, overlayProvider in
+                                viewModel.pdfView = pdfView
+                                viewModel.highlightProvider = overlayProvider
                             }
+                        )
+                        .id(PDFKitViewState(displayMode: userConfig.pdfDisplayMode, rightToLeft: userConfig.pdfRightToLeft))
+                        .frame(width: geometry.size.width, height: geometry.size.height)
+                        
+                        ForEach($viewModel.popups) { $popup in
+                            let popupId = popup.id
+                            PopupView(
+                                userConfig: userConfig,
+                                isVisible: $popup.showPopup,
+                                selectionData: popup.currentSelection,
+                                lookupResults: popup.lookupResults,
+                                dictionaryStyles: popup.dictionaryStyles,
+                                screenSize: geometry.size,
+                                isVertical: popup.isVertical,
+                                isFullWidth: popup.isFullWidth,
+                                coverURL: viewModel.coverURL,
+                                documentTitle: viewModel.book.displayTitle,
+                                clearSelection: popup.clearSelection,
+                                onTextSelected: {
+                                    if let index = viewModel.popups.firstIndex(where: { $0.id == popupId }) {
+                                        viewModel.closeChildPopups(parent: index)
+                                    }
+                                    return viewModel.handleTextSelection($0, maxResults: userConfig.maxResults, scanLength: userConfig.scanLength, isVertical: false, isFullWidth: false)
+                                },
+                                onTapOutside: {
+                                    if let index = viewModel.popups.firstIndex(where: { $0.id == popupId }) {
+                                        viewModel.closeChildPopups(parent: index)
+                                    }
+                                },
+                                onSwipeDismiss: {
+                                    guard let index = viewModel.popups.firstIndex(where: { $0.id == popupId }) else {
+                                        return
+                                    }
+                                    if index == 0 {
+                                        viewModel.clearSelection()
+                                        viewModel.closePopups()
+                                    } else if viewModel.popups.indices.contains(index - 1) {
+                                        viewModel.popups[index - 1].clearSelection.toggle()
+                                        viewModel.closeChildPopups(parent: index - 1)
+                                    }
+                                }
+                            )
+                            .zIndex(Double(100 + (viewModel.popups.firstIndex(where: { $0.id == popupId }) ?? 0)))
                         }
-                    },
-                    onTap: {
-                        withAnimation(.default.speed(2)) {
-                            focusMode.toggle()
-                        }
-                    },
-                    onViewCreated: { viewModel.pdfView = $0 }
-                )
-                .id(PDFKitViewState(displayMode: userConfig.pdfDisplayMode, rightToLeft: userConfig.pdfRightToLeft))
+                    }
+                    .frame(width: geometry.size.width, height: geometry.size.height)
+                }
                 .padding(.top, topSafeArea)
                 .padding(.bottom, readerBottomPadding)
             } else {
@@ -192,9 +261,11 @@ struct PDFReaderView: View {
         }
         .onReceive(NotificationCenter.default.publisher(for: UIApplication.willResignActiveNotification)) { _ in
             viewModel.saveBookmark()
+            viewModel.flushTextLayers()
         }
         .onDisappear {
             viewModel.saveBookmark()
+            viewModel.flushTextLayers()
         }
         .ignoresSafeArea(edges: [.top, .bottom])
         .ignoresSafeArea(.keyboard)

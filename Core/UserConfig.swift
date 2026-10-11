@@ -304,6 +304,10 @@ class UserConfig {
         didSet { UserDefaults.standard.set(pdfRightToLeft, forKey: "pdfRightToLeft") }
     }
     
+    var pdfPrefetchPages: Int {
+        didSet { UserDefaults.standard.set(pdfPrefetchPages, forKey: "pdfPrefetchPages") }
+    }
+    
     var readerShowTitle: Bool {
         didSet { UserDefaults.standard.set(readerShowTitle, forKey: "readerShowTitle") }
     }
@@ -569,6 +573,7 @@ class UserConfig {
         self.pdfDisplayMode = defaults.string(forKey: "pdfDisplayMode")
             .flatMap(PDFDisplayMode.init) ?? .paged
         self.pdfRightToLeft = defaults.object(forKey: "pdfRightToLeft") as? Bool ?? true
+        self.pdfPrefetchPages = defaults.object(forKey: "pdfPrefetchPages") as? Int ?? 2
         self.chapterSwipeDistance = defaults.object(forKey: "chapterSwipeDistance") as? Int ?? 20
         self.horizontalPadding = defaults.object(forKey: "layoutHorizontalPadding") as? Int ?? 5
         self.verticalPadding = defaults.object(forKey: "layoutVerticalPadding") as? Int ?? 0

@@ -83,6 +83,7 @@
 				Dictionary.swift,
 				Highlight.swift,
 				PDFBook.swift,
+				PDFTextLayer.swift,
 				Sasayaki.swift,
 				Statistics.swift,
 			);
@@ -96,6 +97,7 @@
 				CoverImage.swift,
 				CSSSanitizer.swift,
 				Extensions.swift,
+				JapaneseText.swift,
 				PDFImporter.swift,
 				TtuConverter.swift,
 			);
