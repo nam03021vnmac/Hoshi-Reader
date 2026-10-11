@@ -160,8 +160,8 @@ struct PDFReaderView: View {
                     }
                     .frame(width: geometry.size.width, height: geometry.size.height)
                 }
-                .padding(.top, topSafeArea)
-                .padding(.bottom, readerBottomPadding)
+                // pages use the whole screen, the chrome floats on top
+                .ignoresSafeArea()
             } else {
                 VStack(spacing: 16) {
                     Text("Couldn't open book")

@@ -14,6 +14,14 @@ struct PDFKitViewState: Hashable {
     var rightToLeft: Bool
 }
 
+/// PDFKit centers pages inside the safe area, so hiding the status bar with the reader controls moved the page.
+/// The reader is full screen and the controls float on top, so the safe area is ignored.
+final class ReaderPDFView: PDFView {
+    override var safeAreaInsets: UIEdgeInsets {
+        .zero
+    }
+}
+
 struct PDFKitView: UIViewRepresentable {
     let document: PDFDocument
     let initialPage: Int
@@ -30,7 +38,7 @@ struct PDFKitView: UIViewRepresentable {
     }
     
     func makeUIView(context: Context) -> PDFView {
-        let pdfView = PDFView()
+        let pdfView = ReaderPDFView()
         let overlayProvider = PDFHighlightOverlayProvider()
         overlayProvider.pdfView = pdfView
         // before the document is assigned
@@ -43,6 +51,9 @@ struct PDFKitView: UIViewRepresentable {
             pdfView.displayMode = .singlePage
             pdfView.displayDirection = .horizontal
             pdfView.usePageViewController(true, withViewOptions: nil)
+            // edge to edge, paging already separates the pages
+            pdfView.pageBreakMargins = .zero
+            pdfView.pageShadowsEnabled = false
         case .continuous:
             pdfView.displayMode = .singlePageContinuous
             pdfView.displayDirection = .vertical
