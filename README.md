@@ -6,7 +6,7 @@
 ![Platform](https://img.shields.io/badge/platform-iOS-lightgrey)
 ![License](https://img.shields.io/github/license/Manhhao/Hoshi-Reader)
 
-Hoshi Reader is a lightweight Japanese EPUB reader with Yomitan dictionary support, made for immersion learning.
+Hoshi Reader is a lightweight Japanese EPUB and PDF reader with Yomitan dictionary support, made for immersion learning.
 <p align="center">
     <img src="Pictures/books.PNG" width="25%" alt="books">
     <img src="Pictures/reader.PNG" width="25%" alt="reader">
@@ -33,6 +33,7 @@ If you'd like to try out features early consider joining the TestFlight Beta
 - **AnkiMobile integration** with one-click mining
 - Support for all core handlebars used by [Lapis](https://github.com/donkuri/lapis)
 - **ッツ Reader sync**
+- **PDF support** with on-device OCR ([PaddleOCR](https://github.com/PaddlePaddle/PaddleOCR)) for scanned books
 - **Reading statistics**
 - Dictionary search
 - Bookshelves

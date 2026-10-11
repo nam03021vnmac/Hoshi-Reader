@@ -110,6 +110,12 @@ struct AboutView: View {
                     url: "https://github.com/Manhhao/hoshidicts",
                     text: nil
                 )
+                LicenseRow(
+                    name: "ONNX Runtime",
+                    license: "MIT",
+                    url: "https://github.com/microsoft/onnxruntime",
+                    text: mitLicense(copyright: "Copyright (c) Microsoft Corporation")
+                )
             }
             
             Section("Attribution") {
@@ -160,6 +166,12 @@ struct AboutView: View {
                     license: "BSD-3",
                     url: "https://www.nihilist.org.uk",
                     text: bsdLicenseKanjiStrokeOrders
+                )
+                LicenseRow(
+                    name: "PaddleOCR",
+                    license: "Apache-2.0",
+                    url: "https://github.com/PaddlePaddle/PaddleOCR",
+                    text: nil
                 )
             }
         }
