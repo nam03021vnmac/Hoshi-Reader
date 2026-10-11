@@ -64,6 +64,16 @@ actor PDFTextLayerProvider {
         invalidateMemory()
     }
 
+    /// Only saves the flag, the switch to the manga pack comes through configure(_:)
+    func setManga(_ isManga: Bool) {
+        guard info.isManga != isManga else {
+            return
+        }
+        info.isManga = isManga
+        infoDirty = true
+        flushInfo()
+    }
+
     /// Non-ruby character count of a page, if its layer has been built before
     func characterCount(for pageIndex: Int) -> Int? {
         guard info.pageCharacterCounts.indices.contains(pageIndex) else {

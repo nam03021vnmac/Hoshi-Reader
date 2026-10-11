@@ -1834,6 +1834,17 @@
         }
       }
     },
+    "Manga (PP-OCRv6 manga)" : {
+      "comment" : "Context: Settings > Advanced > PDF. Surrounding UI is a grouped form for PDF display and OCR (text recognition) options.",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "漫画（PP-OCRv6 manga）"
+          }
+        }
+      }
+    },
     "Manual" : {
       "localizations" : {
         "zh-Hans" : {
@@ -2189,6 +2200,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "开启"
+          }
+        }
+      }
+    },
+    "Only used for books set to the manga model in the reader menu" : {
+      "comment" : "Context: Settings > Advanced > PDF. Surrounding UI is a grouped form for PDF display and OCR (text recognition) options.",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "仅用于在阅读器菜单中设为使用漫画模型的书籍"
           }
         }
       }
@@ -3381,6 +3403,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "URL"
+          }
+        }
+      }
+    },
+    "Use Manga Model for This Book" : {
+      "comment" : "Context: PDF reader. Surrounding UI is the reader menu, overlays, sheets, or alerts for PDF books.",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "此书使用漫画模型"
           }
         }
       }

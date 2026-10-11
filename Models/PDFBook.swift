@@ -22,6 +22,8 @@ nonisolated struct PDFInfo: Codable, Sendable {
     var forceOCR: Bool = false
     /// pages the user re-ran OCR on, they keep the OCR layer even when the embedded text is usable
     var ocrPages: Set<Int> = []
+    /// recognized with the manga pack instead of the selected one
+    var isManga: Bool = false
 
     init(pageCount: Int) {
         self.pageCount = pageCount
@@ -35,6 +37,7 @@ nonisolated struct PDFInfo: Codable, Sendable {
         case pageCharacterCounts
         case forceOCR
         case ocrPages
+        case isManga
     }
 
     // fields added later are optional, so older files still load
@@ -45,5 +48,6 @@ nonisolated struct PDFInfo: Codable, Sendable {
         pageCharacterCounts = try container.decode([Int?].self, forKey: .pageCharacterCounts)
         forceOCR = try container.decodeIfPresent(Bool.self, forKey: .forceOCR) ?? false
         ocrPages = try container.decodeIfPresent(Set<Int>.self, forKey: .ocrPages) ?? []
+        isManga = try container.decodeIfPresent(Bool.self, forKey: .isManga) ?? false
     }
 }

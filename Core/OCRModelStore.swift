@@ -15,6 +15,8 @@ nonisolated enum OCRModelPack: String, CaseIterable, Codable, Identifiable, Send
     case v6Small = "ppocrv6-small"
     case v6Medium = "ppocrv6-medium"
     case v5Mobile = "ppocrv5-mobile"
+    /// PP-OCRv6 small detection with a recognizer fine-tuned on manga, only used for books marked as manga
+    case v6Manga = "ppocrv6-manga"
 
     // 8 GB devices report a little under 8 GiB
     static let minimumMemoryForMedium: UInt64 = 7 * 1024 * 1024 * 1024
@@ -29,6 +31,15 @@ nonisolated enum OCRModelPack: String, CaseIterable, Codable, Identifiable, Send
         allCases.filter(\.isSupportedOnThisDevice)
     }
 
+    var isForManga: Bool {
+        self == .v6Manga
+    }
+
+    /// Packs offered as the model for all books
+    static var selectable: [OCRModelPack] {
+        supported.filter { !$0.isForManga }
+    }
+
     var title: String {
         switch self {
         case .v6Small:
@@ -37,6 +48,8 @@ nonisolated enum OCRModelPack: String, CaseIterable, Codable, Identifiable, Send
             String(localized: "High accuracy (PP-OCRv6 medium)")
         case .v5Mobile:
             String(localized: "Legacy (PP-OCRv5 mobile)")
+        case .v6Manga:
+            String(localized: "Manga (PP-OCRv6 manga)")
         }
     }
 }
@@ -65,11 +78,12 @@ nonisolated enum OCRModelManifest {
     /// bump when any file changes
     static let revision = 1
 
-    // The ONNX models are downloaded from PaddlePaddle's Hugging Face repos, pinned to a commit and
-    // checked against SHA-256. dict.txt and params.json are derived by Scripts/ocr/make_pack.py and
-    // ship in the app bundle (Features/PDFReader/OCR/Packs).
-    private static func huggingFace(_ repo: String, _ commit: String) -> URL {
-        URL(string: "https://huggingface.co/PaddlePaddle/\(repo)/resolve/\(commit)/inference.onnx")!
+    // The ONNX models are downloaded from Hugging Face, pinned to a commit and checked against SHA-256:
+    // PaddlePaddle's repos, and Kellenok/PP-OCRv6_manga (Apache-2.0) for the manga recognizer.
+    // dict.txt and params.json are derived by Scripts/ocr/make_pack.py and ship in the app bundle
+    // (Features/PDFReader/OCR/Packs).
+    private static func huggingFace(_ repo: String, _ commit: String, owner: String = "PaddlePaddle", file: String = "inference.onnx") -> URL {
+        URL(string: "https://huggingface.co/\(owner)/\(repo)/resolve/\(commit)/\(file)")!
     }
 
     static func files(for pack: OCRModelPack) -> [OCRModelFile] {
@@ -103,6 +117,17 @@ nonisolated enum OCRModelManifest {
                          sha256: "d1979e9f794c464c0d2e0b70a7fe14dd978e9dc644c0e71f14158cdf8342af1b", bytes: 74012),
             OCRModelFile(name: "params.json", source: .bundled("ppocrv5-mobile-params.json"),
                          sha256: "69bdb060a2faf73c8eef30ac50af837abcb19114cdac137271c9bb1c7a5e10be", bytes: 654),
+        ]
+        case .v6Manga: [
+            OCRModelFile(name: "det.onnx", source: .remote(huggingFace("PP-OCRv6_small_det_onnx", "28fe5895c24fd108c19eb3e8479f4ab385fbfc62")),
+                         sha256: "d73e0058b7a8086bbd57f3d10b8bcd4ff95363f67e06e2762b5e814fe9c9410e", bytes: 9880512),
+            OCRModelFile(name: "rec.onnx", source: .remote(huggingFace("PP-OCRv6_manga", "8ee29e094b6aac77dd067c70805438782fa16ab0",
+                                                                       owner: "Kellenok", file: "rec/manga_rec_v0.2.onnx")),
+                         sha256: "de12c84c63e62c80339e882e675983d886670dcb6f0147e1ed041afd6fa81888", bytes: 21167540),
+            OCRModelFile(name: "dict.txt", source: .bundled("ppocrv6-manga-dict.txt"),
+                         sha256: "b5f2bfe2bdd9448429e3e82b51c789775d9b42f2403d082b00662eb77e401c5d", bytes: 74947),
+            OCRModelFile(name: "params.json", source: .bundled("ppocrv6-manga-params.json"),
+                         sha256: "36a0c86524d02951b39dc07b0d4dfe645c9662efe0397c3232c055677171f02f", bytes: 654),
         ]
         }
     }

@@ -33,6 +33,7 @@ final class PDFReaderViewModel {
     var popups: [PopupItem] = []
     var isLoadingPage = false
     var forceOCR: Bool
+    var isManga: Bool
     /// (done, total) while the whole book is being recognized
     var bookOCRProgress: (done: Int, total: Int)?
     var ocrError: String?
@@ -94,6 +95,7 @@ final class PDFReaderViewModel {
             self.info = nil
             self.pageIndex = 0
             self.forceOCR = false
+            self.isManga = false
             return
         }
         
@@ -109,9 +111,10 @@ final class PDFReaderViewModel {
         self.info = info
         self.pageIndex = min(max(saved, 0), document.pageCount - 1)
         self.forceOCR = info?.forceOCR ?? false
+        self.isManga = info?.isManga ?? false
         
         if let info, let pdf = book.pdf {
-            let configuration = Self.ocrConfiguration()
+            let configuration = ocrConfiguration()
             ocrConfigurationKey = configuration.key
             let provider = PDFTextLayerProvider(pdfURL: root.appendingPathComponent(pdf), bookRoot: root, info: info, configuration: configuration)
             self.textLayers = provider
@@ -126,9 +129,14 @@ final class PDFReaderViewModel {
     
     // MARK: OCR
     
-    private static func ocrConfiguration() -> PDFOCRConfiguration {
+    /// Manga books use the manga pack, everything else the pack selected in settings
+    var ocrPack: OCRModelPack {
+        isManga ? .v6Manga : UserConfig.shared.pdfOCRModel
+    }
+    
+    private func ocrConfiguration() -> PDFOCRConfiguration {
         let config = UserConfig.shared
-        let pack = config.pdfOCRModel
+        let pack = ocrPack
         return PDFOCRConfiguration(
             mode: config.pdfOCRMode,
             engine: config.pdfOCRMode == .off ? nil : OCRModelStore.shared.engine(for: pack),
@@ -141,12 +149,12 @@ final class PDFReaderViewModel {
     }
     
     var isOCRModelInstalled: Bool {
-        OCRModelStore.shared.state(for: UserConfig.shared.pdfOCRModel) == .installed
+        OCRModelStore.shared.state(for: ocrPack) == .installed
     }
     
     /// Picks up changes to the OCR mode, the selected pack, or a finished model download
     func refreshOCR() {
-        let configuration = Self.ocrConfiguration()
+        let configuration = ocrConfiguration()
         guard configuration.key != ocrConfigurationKey, let textLayers else {
             return
         }
@@ -177,6 +185,20 @@ final class PDFReaderViewModel {
             await textLayers.prefetch(around: page, radius: radius)
             updateTextBoxes()
         }
+        if value && !isOCRModelInstalled {
+            activeSheet = .ocrModel
+        }
+    }
+    
+    func setManga(_ value: Bool) {
+        isManga = value
+        clearSelection()
+        closePopups()
+        if let textLayers {
+            Task { await textLayers.setManga(value) }
+        }
+        // pages recognized with the other pack are recognized again as they're needed
+        refreshOCR()
         if value && !isOCRModelInstalled {
             activeSheet = .ocrModel
         }

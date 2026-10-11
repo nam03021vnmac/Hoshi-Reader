@@ -173,6 +173,12 @@ struct AboutView: View {
                     url: "https://github.com/PaddlePaddle/PaddleOCR",
                     text: nil
                 )
+                LicenseRow(
+                    name: "PP-OCRv6_manga",
+                    license: "Apache-2.0",
+                    url: "https://huggingface.co/Kellenok/PP-OCRv6_manga",
+                    text: nil
+                )
             }
         }
         .navigationTitle("About")

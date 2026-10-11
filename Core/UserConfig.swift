@@ -595,7 +595,7 @@ class UserConfig {
         // a pack restored from a backup may not be supported on this device
         self.pdfOCRModel = defaults.string(forKey: "pdfOCRModel")
             .flatMap(OCRModelPack.init)
-            .flatMap { $0.isSupportedOnThisDevice ? $0 : nil } ?? .v6Small
+            .flatMap { OCRModelPack.selectable.contains($0) ? $0 : nil } ?? .v6Small
         self.chapterSwipeDistance = defaults.object(forKey: "chapterSwipeDistance") as? Int ?? 20
         self.horizontalPadding = defaults.object(forKey: "layoutHorizontalPadding") as? Int ?? 5
         self.verticalPadding = defaults.object(forKey: "layoutVerticalPadding") as? Int ?? 0
