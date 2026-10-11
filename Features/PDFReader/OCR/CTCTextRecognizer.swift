@@ -185,17 +185,34 @@ nonisolated struct CTCTextRecognizer {
         }
 
         let stride = Double(paddedWidth) / Double(steps.count)
-        let spans = Self.glyphSpans(characters, stride: stride, validWidth: Double(crop.resizedWidth))
-        // strip pixels -> crop pixels along the reading axis
-        let along = crop.isVertical ? crop.rect.height : crop.rect.width
-        let factor = along / CGFloat(crop.resizedWidth)
+        // model input pixels -> strip pixels along the reading axis
+        let toStrip = Double(crop.strip.width) / Double(crop.resizedWidth)
+        let centers = characters.map { Double($0.start + $0.end + 1) / 2 * stride * toStrip }
+        let fullwidth = characters.allSatisfy { $0.character == " " || Self.isFullwidth($0.character) }
+
+        // strip x span of each glyph, and the strip rows they share
+        let spans: [ClosedRange<Double>]
+        let cross: ClosedRange<Double>
+        if let ink = InkLayout.layout(crop.strip, centers: centers, fullwidth: fullwidth) {
+            spans = ink.spans
+            cross = ink.cross
+        } else {
+            spans = Self.glyphSpans(characters, stride: stride, validWidth: Double(crop.resizedWidth)).map {
+                ($0.lowerBound * toStrip)...($0.upperBound * toStrip)
+            }
+            cross = 0...Double(crop.strip.height)
+        }
+        let crossLower = CGFloat(cross.lowerBound)
+        let crossUpper = CGFloat(cross.upperBound)
+
         var glyphs: [OCRGlyph] = []
         for (decoded, span) in zip(characters, spans) where decoded.character != " " {
-            let start = CGFloat(span.lowerBound) * factor
-            let end = CGFloat(span.upperBound) * factor
+            let start = CGFloat(span.lowerBound)
+            let end = CGFloat(span.upperBound)
+            // the strip is the crop turned counterclockwise for vertical lines: strip x is crop y, strip y runs from the crop's right edge
             let rect = crop.isVertical
-                ? CGRect(x: crop.rect.minX, y: crop.rect.minY + start, width: crop.rect.width, height: end - start)
-                : CGRect(x: crop.rect.minX + start, y: crop.rect.minY, width: end - start, height: crop.rect.height)
+                ? CGRect(x: crop.rect.maxX - crossUpper, y: crop.rect.minY + start, width: crossUpper - crossLower, height: end - start)
+                : CGRect(x: crop.rect.minX + start, y: crop.rect.minY + crossLower, width: end - start, height: crossUpper - crossLower)
             // a lone combining mark belongs to the previous glyph
             if let last = glyphs.last, decoded.character.unicodeScalars.allSatisfy({ $0.properties.generalCategory == .nonspacingMark || $0.properties.generalCategory == .enclosingMark }) {
                 glyphs[glyphs.count - 1] = OCRGlyph(character: last.character + decoded.character, rect: last.rect.union(rect))
@@ -206,7 +223,8 @@ nonisolated struct CTCTextRecognizer {
         guard !glyphs.isEmpty else {
             return nil
         }
-        return OCRLine(bounds: crop.rect, isVertical: crop.isVertical, text: text, confidence: confidence, glyphs: glyphs)
+        let bounds = glyphs.dropFirst().reduce(glyphs[0].rect) { $0.union($1.rect) }
+        return OCRLine(bounds: bounds, isVertical: crop.isVertical, text: text, confidence: confidence, glyphs: glyphs)
     }
 
     static func argmax(_ probabilities: UnsafeBufferPointer<Float>, steps: Int, classes: Int) -> [CTCStep] {
