@@ -60,7 +60,10 @@ nonisolated struct DBTextDetector {
     let config: DBConfig
 
     func detect(_ image: PixelImage) throws -> [DetectedBox] {
-        let (map, scaleX, scaleY) = try probabilityMap(image)
+        // free ORT's autoreleased output now rather than after the page's recognition
+        let (map, scaleX, scaleY) = try autoreleasepool {
+            try probabilityMap(image)
+        }
         return Self.boxes(in: map, config: config, scaleX: scaleX, scaleY: scaleY, imageWidth: image.width, imageHeight: image.height)
     }
 
