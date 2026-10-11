@@ -64,6 +64,14 @@ actor PDFTextLayerProvider {
         invalidateMemory()
     }
 
+    /// Non-ruby character count of a page, if its layer has been built before
+    func characterCount(for pageIndex: Int) -> Int? {
+        guard info.pageCharacterCounts.indices.contains(pageIndex) else {
+            return nil
+        }
+        return info.pageCharacterCounts[pageIndex]
+    }
+
     func cachedLayer(for pageIndex: Int) -> PDFTextLayer? {
         guard let layer = cache[pageIndex] else {
             return nil

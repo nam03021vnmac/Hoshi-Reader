@@ -61,6 +61,17 @@ struct PDFReaderView: View {
         "\(viewModel.pageIndex + 1) / \(viewModel.pageCount)"
     }
     
+    private var statisticsString: String {
+        var result: [String] = []
+        if userConfig.readerShowReadingSpeed {
+            result.append("\(viewModel.sessionStatistics.lastReadingSpeed.formatted(.number.grouping(.never))) / h")
+        }
+        if userConfig.readerShowReadingTime {
+            result.append("\(Duration.seconds(viewModel.sessionStatistics.readingTime).formatted(.time(pattern: .hourMinute)))")
+        }
+        return result.joined(separator: " ")
+    }
+    
     private var ocrModelState: OCRModelStore.State {
         OCRModelStore.shared.state(for: userConfig.pdfOCRModel)
     }
@@ -224,6 +235,7 @@ struct PDFReaderView: View {
             HStack {
                 Button {
                     viewModel.saveBookmark()
+                    viewModel.stopTracking()
                     dismissReader?()
                 } label: {
                     Image(systemName: "chevron.left")
@@ -238,22 +250,49 @@ struct PDFReaderView: View {
                 Spacer()
                 
                 if viewModel.document != nil {
-                    Text(pageString)
-                        .font(.caption)
-                        .monospacedDigit()
-                        .tracking(-0.4)
-                        .foregroundStyle(infoStyle)
-                        .padding(.horizontal, 14)
-                        .padding(.vertical, 7)
-                        .conditionalGlassEffect()
+                    HStack(spacing: 8) {
+                        if userConfig.readerShowStatisticsToggle {
+                            Button {
+                                if viewModel.isTracking {
+                                    viewModel.stopTracking()
+                                } else {
+                                    viewModel.startTracking()
+                                }
+                            } label: {
+                                Image(systemName: viewModel.isTracking ? "timer" : "chart.bar.xaxis")
+                                    .font(.system(size: 15))
+                                    .contentShape(Rectangle())
+                            }
+                            .buttonStyle(.plain)
+                        }
+                        Button {
+                            viewModel.activeSheet = .contents
+                        } label: {
+                            VStack(spacing: 2) {
+                                if !statisticsString.isEmpty {
+                                    Text(statisticsString)
+                                }
+                                Text(pageString)
+                            }
+                            .font(.caption)
+                            .monospacedDigit()
+                            .tracking(-0.4)
+                            .contentShape(Rectangle())
+                        }
+                        .buttonStyle(.plain)
+                    }
+                    .foregroundStyle(infoStyle)
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 7)
+                    .conditionalGlassEffect()
                     
                     Spacer()
                     
                     Menu {
                         Button {
-                            viewModel.activeSheet = .contents
+                            viewModel.activeSheet = .statistics
                         } label: {
-                            Label("Contents", systemImage: "list.bullet")
+                            Label("Statistics", systemImage: "chart.bar.xaxis")
                         }
                         
                         if viewModel.ocrEnabled {
@@ -339,6 +378,9 @@ struct PDFReaderView: View {
                 }
                 .presentationDetents([.medium])
                 .preferredColorScheme(readerTheme)
+            case .statistics:
+                PDFStatisticsSheet(viewModel: viewModel)
+                    .preferredColorScheme(readerTheme)
             case .ocrModel:
                 PDFOCRModelPrompt(pack: userConfig.pdfOCRModel) {
                     viewModel.activeSheet = nil
@@ -362,6 +404,25 @@ struct PDFReaderView: View {
         } message: {
             Text(viewModel.ocrError ?? "")
         }
+        .task(id: viewModel.isTracking) {
+            guard viewModel.isTracking else {
+                return
+            }
+            while !Task.isCancelled {
+                try? await Task.sleep(for: .seconds(1))
+                if !viewModel.isPaused {
+                    viewModel.updateStats()
+                }
+            }
+        }
+        .onChange(of: viewModel.activeSheet) { _, sheet in
+            if sheet == nil {
+                viewModel.resetTrackingBaseline()
+                viewModel.isPaused = false
+            } else {
+                viewModel.isPaused = true
+            }
+        }
         .onChange(of: userConfig.pdfOCRMode) {
             viewModel.refreshOCR()
         }
@@ -381,6 +442,16 @@ struct PDFReaderView: View {
         .onReceive(NotificationCenter.default.publisher(for: UIApplication.willResignActiveNotification)) { _ in
             viewModel.saveBookmark()
             viewModel.flushTextLayers()
+            if viewModel.isTracking {
+                viewModel.isPaused = true
+            }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: UIApplication.didBecomeActiveNotification)) { _ in
+            guard viewModel.isTracking, viewModel.activeSheet == nil else {
+                return
+            }
+            viewModel.resetTrackingBaseline()
+            viewModel.isPaused = false
         }
         .onDisappear {
             viewModel.saveBookmark()

@@ -708,6 +708,17 @@
     "Characters" : {
 
     },
+    "Characters are counted when you turn past a page whose text has been recognized." : {
+      "comment" : "Context: PDF reader. Surrounding UI is the reader menu, overlays, sheets, or alerts for PDF books.",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "翻过已识别文本的页面时才会计入字数。"
+          }
+        }
+      }
+    },
     "characters per day" : {
 
     },

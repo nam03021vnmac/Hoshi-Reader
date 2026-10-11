@@ -16,6 +16,7 @@ enum PDFReaderSheet: Identifiable {
     case contents
     case settings
     case ocrModel
+    case statistics
     
     var id: Self { self }
 }
@@ -41,6 +42,19 @@ final class PDFReaderViewModel {
     
     let maxSelectionLength = 16
     
+    // stats
+    var isTracking = false
+    var isPaused = false
+    var sessionStatistics: Statistics
+    var todaysStatistics: Statistics
+    var allTimeStatistics: Statistics
+    private let statisticsResetTime: Int
+    @ObservationIgnored private var stats: [Statistics] = []
+    @ObservationIgnored private var lastTimestamp: Date = .now
+    // characters of pages turned past since the last update
+    @ObservationIgnored private var pendingCharacters = 0
+    @ObservationIgnored private var jumpTarget: Int?
+    
     @ObservationIgnored weak var pdfView: PDFView?
     @ObservationIgnored var highlightProvider: PDFHighlightOverlayProvider?
     @ObservationIgnored private var textLayers: PDFTextLayerProvider?
@@ -65,6 +79,11 @@ final class PDFReaderViewModel {
     
     init(book: BookMetadata) {
         self.book = book
+        let resetTime = UserConfig.shared.statisticsResetTime
+        self.statisticsResetTime = resetTime
+        self.sessionStatistics = Self.getDefaultStatistic(title: book.title, resetTime: resetTime)
+        self.todaysStatistics = Self.getDefaultStatistic(title: book.title, resetTime: resetTime)
+        self.allTimeStatistics = Self.getDefaultStatistic(title: book.title, resetTime: resetTime)
         
         guard let pdf = book.pdf,
               let root = try? BookStorage.getBooksDirectory().appendingPathComponent(book.folder),
@@ -97,6 +116,11 @@ final class PDFReaderViewModel {
             let provider = PDFTextLayerProvider(pdfURL: root.appendingPathComponent(pdf), bookRoot: root, info: info, configuration: configuration)
             self.textLayers = provider
             Task { await provider.prefetch(around: self.pageIndex, radius: UserConfig.shared.pdfPrefetchPages) }
+        }
+        
+        loadStatistics()
+        if UserConfig.shared.statisticsAutostartMode == .on {
+            startTracking()
         }
     }
     
@@ -262,12 +286,26 @@ final class PDFReaderViewModel {
             return
         }
         let forward = index > pageIndex
+        let previous = pageIndex
+        let jumped = jumpTarget == index
+        jumpTarget = nil
         pageIndex = index
         latestTapToken = nil
         isLoadingPage = false
         clearSelection()
         closePopups()
         scheduleSave()
+        if !isTracking && !jumped && UserConfig.shared.statisticsAutostartMode == .pageturn {
+            startTracking()
+        } else if !jumped && abs(index - previous) <= 5 {
+            // continuous scrolling can skip a page notification or two.
+            // moving back subtracts, like the EPUB reader, so paging back and forth doesn't add up
+            if forward {
+                countPages(previous..<index, sign: 1)
+            } else {
+                countPages(index..<previous, sign: -1)
+            }
+        }
         if let textLayers {
             let radius = UserConfig.shared.pdfPrefetchPages
             Task { await textLayers.prefetch(around: index, radius: radius, forward: forward) }
@@ -449,9 +487,13 @@ final class PDFReaderViewModel {
     }
     
     func jump(to index: Int) {
-        guard let document, let page = document.page(at: min(max(index, 0), pageCount - 1)) else {
+        let target = min(max(index, 0), pageCount - 1)
+        guard let document, let page = document.page(at: target) else {
             return
         }
+        // jumps don't count as characters read
+        jumpTarget = target
+        flushStats()
         pdfView?.go(to: page)
     }
     
@@ -468,6 +510,7 @@ final class PDFReaderViewModel {
             lastModified: Date()
         )
         try? BookStorage.save(bookmark, inside: rootURL, as: FileNames.bookmark)
+        flushStats()
     }
     
     private func scheduleSave() {
@@ -479,5 +522,130 @@ final class PDFReaderViewModel {
             }
             self?.saveBookmark()
         }
+    }
+    
+    // MARK: statistics
+    // todo: share with ReaderViewModel
+    
+    func startTracking() {
+        isTracking = true
+        resetTrackingBaseline()
+    }
+    
+    func stopTracking() {
+        guard isTracking else { return }
+        flushStats()
+        isTracking = false
+    }
+    
+    // https://github.com/ttu-ttu/ebook-reader/blob/2703b50ec52b2e4f70afcab725c0f47dd8a66bf4/apps/web/src/lib/components/book-reader/book-reading-tracker/book-reading-tracker.svelte#L72
+    func updateStats() {
+        let currentDateKey = Self.formattedDate(date: .now, resetTime: statisticsResetTime)
+        if todaysStatistics.dateKey != currentDateKey {
+            if let index = stats.firstIndex(where: { $0.dateKey == todaysStatistics.dateKey }) {
+                stats[index] = todaysStatistics
+            } else {
+                stats.append(todaysStatistics)
+            }
+            todaysStatistics = stats.first(where: { $0.dateKey == currentDateKey }) ?? Self.getDefaultStatistic(title: book.title, resetTime: statisticsResetTime)
+        }
+        
+        let now: Date = .now
+        let timeDiff = now.timeIntervalSince(lastTimestamp)
+        // never take back more than this session added, same as the EPUB reader
+        let characterDiff = max(pendingCharacters, -sessionStatistics.charactersRead)
+        let lastStatisticModified = Int(now.timeIntervalSince1970 * 1000)
+        guard timeDiff > 0 else {
+            return
+        }
+        
+        updateStatistic(to: &sessionStatistics, timeDiff: timeDiff, characterDiff: characterDiff, lastStatisticModified: lastStatisticModified)
+        updateStatistic(to: &todaysStatistics, timeDiff: timeDiff, characterDiff: characterDiff, lastStatisticModified: lastStatisticModified)
+        updateStatistic(to: &allTimeStatistics, timeDiff: timeDiff, characterDiff: characterDiff, lastStatisticModified: lastStatisticModified)
+        
+        lastTimestamp = now
+        pendingCharacters = 0
+    }
+    
+    func resetTrackingBaseline() {
+        lastTimestamp = .now
+        pendingCharacters = 0
+    }
+    
+    /// Adds (sign 1) or subtracts (sign -1) the characters of pages the user moved past. Pages whose text was never built count as 0.
+    private func countPages(_ pages: Range<Int>, sign: Int) {
+        guard isTracking, !isPaused, let textLayers else {
+            return
+        }
+        Task {
+            var count = 0
+            for page in pages {
+                count += await textLayers.characterCount(for: page) ?? 0
+            }
+            if isTracking && !isPaused {
+                pendingCharacters += sign * count
+            }
+        }
+    }
+    
+    private func flushStats() {
+        guard isTracking, rootURL != nil else { return }
+        if !isPaused {
+            updateStats()
+        }
+        saveStats()
+    }
+    
+    // https://github.com/ttu-ttu/ebook-reader/blob/2703b50ec52b2e4f70afcab725c0f47dd8a66bf4/apps/web/src/lib/components/book-reader/book-reading-tracker/book-reading-tracker.svelte#L722
+    private func updateStatistic(to: inout Statistics, timeDiff: Double, characterDiff: Int, lastStatisticModified: Int) {
+        to.readingTime += timeDiff
+        to.charactersRead = max(to.charactersRead + characterDiff, 0)
+        to.lastReadingSpeed = to.readingSpeed
+        to.maxReadingSpeed = max(to.maxReadingSpeed, to.lastReadingSpeed)
+        to.minReadingSpeed = to.minReadingSpeed != 0 ? min(to.minReadingSpeed, to.lastReadingSpeed) : to.lastReadingSpeed
+        if characterDiff != 0 {
+            to.altMinReadingSpeed = to.altMinReadingSpeed != 0 ? min(to.altMinReadingSpeed, to.lastReadingSpeed) : to.lastReadingSpeed
+        }
+        to.lastStatisticModified = lastStatisticModified
+    }
+    
+    private func saveStats() {
+        guard let rootURL else {
+            return
+        }
+        if let index = stats.firstIndex(where: { $0.dateKey == todaysStatistics.dateKey }) {
+            stats[index] = todaysStatistics
+        } else {
+            stats.append(todaysStatistics)
+        }
+        
+        stats = Statistics.merged(stats).filter(\.hasActivity)
+        try? BookStorage.save(stats, inside: rootURL, as: FileNames.statistics)
+    }
+    
+    private func loadStatistics() {
+        guard let rootURL else {
+            return
+        }
+        stats = Statistics.merged(BookStorage.loadStatistics(root: rootURL) ?? [])
+        todaysStatistics = stats.first(where: { $0.dateKey == Self.formattedDate(date: .now, resetTime: statisticsResetTime) }) ?? Self.getDefaultStatistic(title: book.title, resetTime: statisticsResetTime)
+        allTimeStatistics = Self.getDefaultStatistic(title: book.title, resetTime: statisticsResetTime)
+        
+        let allTime = stats.reduce(into: ReadingDay(date: .now)) { $0.add($1) }
+        allTimeStatistics.charactersRead = allTime.charactersRead
+        allTimeStatistics.readingTime = allTime.readingTime
+        allTimeStatistics.lastReadingSpeed = allTime.readingSpeed
+    }
+    
+    private static func getDefaultStatistic(title: String, resetTime: Int = 0) -> Statistics {
+        return Statistics(title: title, dateKey: Self.formattedDate(date: .now, resetTime: resetTime), charactersRead: 0, readingTime: 0, minReadingSpeed: 0, altMinReadingSpeed: 0, lastReadingSpeed: 0, maxReadingSpeed: 0, lastStatisticModified: 0)
+    }
+    
+    private static func formattedDate(date: Date, resetTime: Int = 0) -> String {
+        let adjustedDate = date.addingTimeInterval(-Double(resetTime) * 60)
+        let formatter = ISO8601DateFormatter()
+        formatter.timeZone = TimeZone.current
+        formatter.formatOptions = [.withFullDate]
+        return formatter.string(from: adjustedDate)
     }
 }
