@@ -246,7 +246,7 @@ class BookshelfViewModel {
             }
             do {
                 let (tempURL, _) = try await URLSession.shared.download(from: url)
-                try processImport(sourceURL: tempURL)
+                try processImport(sourceURL: tempURL, originalName: url.lastPathComponent.isEmpty ? "document.pdf" : url.lastPathComponent)
                 loadBooks()
             } catch {
                 showError(message: "Download failed: \(error.localizedDescription)")
@@ -255,6 +255,9 @@ class BookshelfViewModel {
     }
     
     func syncBook(book: BookMetadata, direction: SyncDirection? = nil, syncBookData: Bool, syncStats: Bool, statsSyncMode: StatisticsSyncMode, syncAudioBook: Bool) {
+        guard book.format != .pdf else {
+            return
+        }
         isSyncing = true
         Task {
             defer {
@@ -399,8 +402,11 @@ class BookshelfViewModel {
         let url = directory.appendingPathComponent(book.folder)
         guard let bookInfo = BookStorage.loadBookInfo(root: url) else { return }
         
+        let chapterIndex = book.format == .pdf
+            ? max(bookInfo.characterCount - 1, 0)
+            : bookInfo.chapterInfo.values.compactMap(\.spineIndex).max() ?? 0
         let bookmark = Bookmark(
-            chapterIndex: bookInfo.chapterInfo.values.compactMap(\.spineIndex).max() ?? 0,
+            chapterIndex: chapterIndex,
             progress: 1,
             characterCount: bookInfo.characterCount,
             lastModified: Date()
@@ -468,7 +474,12 @@ class BookshelfViewModel {
         try processImport(sourceURL: url)
     }
     
-    private func processImport(sourceURL: URL) throws {
+    private func processImport(sourceURL: URL, originalName: String? = nil) throws {
+        if BookFileType.detect(sourceURL) == .pdf {
+            try PDFImporter.importPDF(from: sourceURL, originalName: originalName ?? sourceURL.lastPathComponent)
+            return
+        }
+        
         let tempDir = FileManager.default.temporaryDirectory
         let tempURL = tempDir.appendingPathComponent(UUID().uuidString).appendingPathExtension("epub")
         

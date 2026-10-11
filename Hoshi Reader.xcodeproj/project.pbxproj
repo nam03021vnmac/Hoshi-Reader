@@ -82,6 +82,7 @@
 				Book.swift,
 				Dictionary.swift,
 				Highlight.swift,
+				PDFBook.swift,
 				Sasayaki.swift,
 				Statistics.swift,
 			);
@@ -90,10 +91,12 @@
 		48568A942F1E926300F9C126 /* Exceptions for "Util" folder in "Hoshi Reader" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
+				BookFileType.swift,
 				BookProcessor.swift,
 				CoverImage.swift,
 				CSSSanitizer.swift,
 				Extensions.swift,
+				PDFImporter.swift,
 				TtuConverter.swift,
 			);
 			target = 48107AB62F114021009E12D1 /* Hoshi Reader */;

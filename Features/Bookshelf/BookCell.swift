@@ -65,7 +65,7 @@ struct BookCell: View {
                 }
             }
             
-            if userConfig.enableSync {
+            if userConfig.enableSync && book.format != .pdf {
                 if userConfig.syncMode == .manual {
                     Menu {
                         Button {
@@ -111,7 +111,7 @@ struct BookCell: View {
                 }
             }
             
-            if userConfig.enableSasayaki {
+            if userConfig.enableSasayaki && book.format != .pdf {
                 Button {
                     onMatch()
                 } label: {
@@ -132,7 +132,7 @@ struct BookCell: View {
                 Label("Rename", systemImage: "character.cursor.ibeam.ja")
             }
             
-            if let epub = book.epub,
+            if let epub = book.epub ?? book.pdf,
                let booksDir = try? BookStorage.getBooksDirectory() {
                 ShareLink(item: booksDir.appendingPathComponent(book.folder).appendingPathComponent(epub)) {
                     Label("Export", systemImage: "square.and.arrow.up")

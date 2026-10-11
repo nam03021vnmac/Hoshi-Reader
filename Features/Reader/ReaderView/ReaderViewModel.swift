@@ -55,8 +55,18 @@ class ReaderLoaderViewModel {
     }
     
     func loadBook() {
-        guard let root = rootURL,
-              let epub = book.epub else {
+        guard let root = rootURL else {
+            return
+        }
+        
+        if book.format == .pdf {
+            var bookCopy = book
+            bookCopy.lastAccess = Date()
+            try? BookStorage.save(bookCopy, inside: root, as: FileNames.metadata)
+            return
+        }
+        
+        guard let epub = book.epub else {
             return
         }
         

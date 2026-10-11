@@ -19,6 +19,8 @@ nonisolated enum FileNames: Sendable {
     static let sasayakiMatch = "sasayaki_match.json"
     static let sasayakiPlayback = "sasayaki_playback.json"
     static let highlights = "highlights.json"
+    static let pdfInfo = "pdfinfo.json"
+    static let textLayerDirectory = "textlayer"
 }
 
 struct BookStorage {
@@ -249,6 +251,15 @@ struct BookStorage {
     
     static func loadBookInfo(root: URL) -> BookInfo? {
         load(BookInfo.self, from: root.appendingPathComponent(FileNames.bookinfo))
+    }
+    
+    static func loadPDFInfo(root: URL) -> PDFInfo? {
+        load(PDFInfo.self, from: root.appendingPathComponent(FileNames.pdfInfo))
+    }
+    
+    static func textLayerURL(root: URL, pageIndex: Int) -> URL {
+        root.appendingPathComponent(FileNames.textLayerDirectory)
+            .appendingPathComponent(String(format: "page-%05d.json", pageIndex))
     }
     
     nonisolated static func loadMetadata(root: URL) -> BookMetadata? {

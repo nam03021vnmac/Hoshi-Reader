@@ -21,22 +21,30 @@ enum SortOption: String, CaseIterable, Identifiable {
     }
 }
 
+nonisolated enum BookFormat: String, Codable, Sendable {
+    case epub
+    case pdf
+}
+
 nonisolated struct BookMetadata: Codable, Identifiable, Hashable {
     let id: UUID
     let title: String
     let author: String?
     let epub: String?
+    let pdf: String?
     let cover: String?
     let folder: String
     var lastAccess: Date
     var renamedTitle: String?
     var displayTitle: String { renamedTitle ?? title }
+    var format: BookFormat { pdf != nil ? .pdf : .epub }
     
-    init(id: UUID = UUID(), title: String, author: String? = nil, epub: String? = nil, cover: String?, folder: String, lastAccess: Date) {
+    init(id: UUID = UUID(), title: String, author: String? = nil, epub: String? = nil, pdf: String? = nil, cover: String?, folder: String, lastAccess: Date) {
         self.id = id
         self.title = title
         self.author = author
         self.epub = epub
+        self.pdf = pdf
         self.cover = cover
         self.folder = folder
         self.lastAccess = lastAccess

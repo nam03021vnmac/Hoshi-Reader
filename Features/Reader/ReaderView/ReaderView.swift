@@ -36,7 +36,9 @@ struct ReaderLoader: View {
     }
     
     var body: some View {
-        if let doc = viewModel.document, let root = viewModel.rootURL {
+        if viewModel.book.format == .pdf {
+            PDFReaderView(book: viewModel.book)
+        } else if let doc = viewModel.document, let root = viewModel.rootURL {
             ReaderView(
                 book: viewModel.book,
                 document: doc,

@@ -16,6 +16,16 @@
 		</dict>
 		<dict>
 			<key>CFBundleTypeName</key>
+			<string>PDF</string>
+			<key>LSHandlerRank</key>
+			<string>Alternate</string>
+			<key>LSItemContentTypes</key>
+			<array>
+				<string>com.adobe.pdf</string>
+			</array>
+		</dict>
+		<dict>
+			<key>CFBundleTypeName</key>
 			<string>colpkg</string>
 			<key>LSHandlerRank</key>
 			<string>Default</string>
