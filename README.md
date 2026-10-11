@@ -58,6 +58,7 @@ If you're planning on contributing a feature or significant change, please open 
 | [EPUBKit](https://github.com/witekbobrowski/EPUBKit) | MIT |
 | [SwiftUI Introspect](https://github.com/siteline/swiftui-introspect) | MIT |
 | [SwiftLAME](https://github.com/hidden-spectrum/SwiftLAME) | LGPL-2.1 |
+| [ONNX Runtime](https://github.com/microsoft/onnxruntime) | MIT |
 
 ## Attribution
 
@@ -70,6 +71,7 @@ If you're planning on contributing a feature or significant change, please open 
 | [Jiten](https://github.com/Sirush/Jiten) | Recommended frequency dictionary | CC BY-SA 4.0 |
 | [Kanji alive](https://github.com/kanjialive/kanji-data-media) | Default audio source | CC-BY-4.0 |
 | [Tofugu/WaniKani Audio](https://github.com/tofugu/japanese-vocabulary-pronunciation-audio) | Default audio source | CC-BY-SA-4.0 |
+| [PaddleOCR](https://github.com/PaddlePaddle/PaddleOCR) | PP-OCRv6 and PP-OCRv5 models for PDF OCR | Apache-2.0 |
 
 ## Issues
 

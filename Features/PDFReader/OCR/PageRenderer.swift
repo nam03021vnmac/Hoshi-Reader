@@ -6,16 +6,19 @@
 //  SPDX-License-Identifier: GPL-3.0-or-later
 //
 
+import CoreGraphics
 import PDFKit
-import UIKit
 
-nonisolated struct RenderedPage {
+nonisolated struct RenderedPage: Sendable {
     let image: CGImage
     // image pixel (top-left origin) -> PDF page space
     let pixelToPage: CGAffineTransform
 }
 
 nonisolated enum PageRenderer {
+    /// Japanese body text in a bunko scan is ~25–30 px per character at this size
+    static let ocrLongSide: CGFloat = 2048
+
     static func render(_ page: PDFPage, longSide: CGFloat) -> RenderedPage? {
         let box: PDFDisplayBox = .cropBox
         let transform = page.transform(for: box)
@@ -40,7 +43,7 @@ nonisolated enum PageRenderer {
             return nil
         }
         
-        context.setFillColor(UIColor.white.cgColor)
+        context.setFillColor(CGColor(gray: 1, alpha: 1))
         context.fill(CGRect(x: 0, y: 0, width: width, height: height))
         context.scaleBy(x: scale, y: scale)
         page.draw(with: box, to: context)

@@ -1,0 +1,42 @@
+{
+  "model": "PP-OCRv6_small",
+  "det": {
+    "limitSideLen": 1536,
+    "channelOrder": "BGR",
+    "scale": 0.00392156862745098,
+    "mean": [
+      0.485,
+      0.456,
+      0.406
+    ],
+    "std": [
+      0.229,
+      0.224,
+      0.225
+    ],
+    "thresh": 0.2,
+    "boxThresh": 0.45,
+    "unclipRatio": 1.4,
+    "maxCandidates": 300,
+    "minSize": 3
+  },
+  "rec": {
+    "imageHeight": 48,
+    "minWidth": 320,
+    "maxWidth": 3200,
+    "channelOrder": "BGR",
+    "scale": 0.00392156862745098,
+    "mean": [
+      0.5,
+      0.5,
+      0.5
+    ],
+    "std": [
+      0.5,
+      0.5,
+      0.5
+    ],
+    "useSpaceChar": true,
+    "batchSize": 6
+  }
+}

@@ -10,6 +10,8 @@
 import EPUBKit
 import SwiftUI
 import CHoshiDicts
+import Cxx
+import CxxStdlib
 
 enum ActiveSheet: Identifiable {
     case appearance
@@ -431,7 +433,9 @@ class ReaderViewModel {
         let lookupResults = LookupEngine.shared.lookup(selection.text, maxResults: maxResults, scanLength: scanLength)
         var dictionaryStyles: [String: String] = [:]
         for style in LookupEngine.shared.getStyles() {
-            dictionaryStyles[String(style.dict_name)] = String(style.styles)
+            let name = String(decoding: style.dict_name.map { UInt8(bitPattern: $0) }, as: UTF8.self)
+            let css = String(decoding: style.styles.map { UInt8(bitPattern: $0) }, as: UTF8.self)
+            dictionaryStyles[name] = css
         }
         var cue: SasayakiMatch? = nil
         if sasayakiPlayer.hasAudio, let offset = selection.normalizedOffset {
@@ -467,7 +471,8 @@ class ReaderViewModel {
                     return p
                 }
             }
-            return String(firstResult.matched).count
+            let matched = String(decoding: firstResult.matched.map { UInt8(bitPattern: $0) }, as: UTF8.self)
+            return matched.count
         }
         return nil
     }

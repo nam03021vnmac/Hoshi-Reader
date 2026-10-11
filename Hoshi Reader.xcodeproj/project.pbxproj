@@ -17,6 +17,7 @@
 		48FE8D502F76AB88002C2C49 /* ShareExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 48FE8D462F76AB88002C2C49 /* ShareExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		90F2F2662FBCA7C000FEABB6 /* Dictionaries.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = 90F2F2642FBCA7C000FEABB6 /* Dictionaries.xcstrings */; };
 		90F2F2672FBCA7C000FEABB6 /* Localizable.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = 90F2F2652FBCA7C000FEABB6 /* Localizable.xcstrings */; };
+		ABFC92CD98C379AE0FE51CB2 /* onnxruntime in Frameworks */ = {isa = PBXBuildFile; productRef = C8957CAAA517123D4F2257F6 /* onnxruntime */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -70,6 +71,7 @@
 				FontManager.swift,
 				LocalFileServer.swift,
 				LookupEngine.swift,
+				OCRModelStore.swift,
 				StatisticsStorage.swift,
 				UserConfig.swift,
 			);
@@ -169,6 +171,7 @@
 				48F0AF182FF5750F004B75F8 /* SwiftLAME in Frameworks */,
 				482B74F22F4664CB00398222 /* SwiftUIIntrospect in Frameworks */,
 				48BC0BDF2F5C316B00EDAC3F /* CHoshiDicts in Frameworks */,
+				ABFC92CD98C379AE0FE51CB2 /* onnxruntime in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -235,6 +238,7 @@
 				482B74F12F4664CB00398222 /* SwiftUIIntrospect */,
 				48BC0BDE2F5C316B00EDAC3F /* CHoshiDicts */,
 				48F0AF172FF5750F004B75F8 /* SwiftLAME */,
+				C8957CAAA517123D4F2257F6 /* onnxruntime */,
 			);
 			productName = "Hoshi Reader";
 			productReference = 48D95BC52F1BF4D80074AD70 /* Hoshi Reader.app */;
@@ -295,6 +299,7 @@
 				48A18AB92F465F1F00AC8514 /* XCRemoteSwiftPackageReference "SwiftUI-Introspect" */,
 				48BC0BDD2F5C316B00EDAC3F /* XCRemoteSwiftPackageReference "hoshidicts" */,
 				48F0AF152FF574F8004B75F8 /* XCRemoteSwiftPackageReference "SwiftLAME" */,
+				21953111D6FA01149E61C245 /* XCRemoteSwiftPackageReference "onnxruntime-swift-package-manager" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 48107AAE2F114021009E12D1;
@@ -665,6 +670,14 @@
 /* End XCLocalSwiftPackageReference section */
 
 /* Begin XCRemoteSwiftPackageReference section */
+		21953111D6FA01149E61C245 /* XCRemoteSwiftPackageReference "onnxruntime-swift-package-manager" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/microsoft/onnxruntime-swift-package-manager";
+			requirement = {
+				kind = exactVersion;
+				version = 1.24.2;
+			};
+		};
 		48A18AB92F465F1F00AC8514 /* XCRemoteSwiftPackageReference "SwiftUI-Introspect" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/siteline/SwiftUI-Introspect";
@@ -710,6 +723,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = 48F0AF152FF574F8004B75F8 /* XCRemoteSwiftPackageReference "SwiftLAME" */;
 			productName = SwiftLAME;
+		};
+		C8957CAAA517123D4F2257F6 /* onnxruntime */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 21953111D6FA01149E61C245 /* XCRemoteSwiftPackageReference "onnxruntime-swift-package-manager" */;
+			productName = onnxruntime;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

@@ -62,3 +62,11 @@ fastlane/report.xml
 fastlane/Preview.html
 fastlane/screenshots/**/*.png
 fastlane/test_output
+
+# OCR models and tooling (Scripts/ocr)
+*.onnx
+Scripts/ocr/.venv/
+Scripts/ocr/build/
+Scripts/ocr/harness/.build/
+Scripts/ocr/harness/.swiftpm/
+Scripts/ocr/__pycache__/

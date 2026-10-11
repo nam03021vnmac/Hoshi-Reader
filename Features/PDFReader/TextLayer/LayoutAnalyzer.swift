@@ -115,11 +115,17 @@ nonisolated enum LayoutAnalyzer {
 
     /// Returns ruby line index -> index of the main line it annotates.
     private static func detectRuby(_ lines: [PDFTextLine]) -> [Int: Int] {
-        let thicknesses = lines.filter { $0.glyphs.count >= 3 }.map(\.thickness).sorted()
-        guard !thicknesses.isEmpty else {
-            return [:]
+        // weighted by glyph count, so pages with many short ruby lines still find the body text size
+        let thicknesses = lines.filter { $0.glyphs.count >= 3 }.map { ($0.thickness, $0.glyphs.count) }.sorted { $0.0 < $1.0 }
+        var remaining = Double(thicknesses.reduce(0) { $0 + $1.1 }) / 2
+        var median: CGFloat = 0
+        for (thickness, count) in thicknesses {
+            median = thickness
+            remaining -= Double(count)
+            if remaining <= 0 {
+                break
+            }
         }
-        let median = thicknesses[thicknesses.count / 2]
         guard median > 0 else {
             return [:]
         }
