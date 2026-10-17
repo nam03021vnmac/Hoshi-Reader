@@ -763,9 +763,9 @@ Methods:
   if let matched = handleTextSelection(selection, isVertical: result.isVertical, ...) {
       highlight(result.glyphs.prefix(matched))                         // matched = String(firstResult.matched).count
       currentScan = (pageIndex, result)
-  } else { clear highlight }
+  } else { clear highlight; onTapOutside() }                         // no match toggles the controls like blank space
   ```
-- `handleTextSelection(_:maxResults:scanLength:isVertical:isFullWidth:) -> Int?`, `closePopups()`, `closeChildPopups(parent:)`, `clearSelection()`: **copy the logic from `ReaderViewModel`**, minus the Sasayaki parts (`sasayakiCue = nil`, no auto-pause). Duplication is intentional for v1 (ground rule 4). Leave a `// todo: share with ReaderViewModel` comment.
+- `handleTextSelection(_:maxResults:scanLength:isVertical:isFullWidth:) -> Int?`, `closePopups()`, `closeChildPopups(parent:)`, `clearSelection()`: **copy the logic from `ReaderViewModel`**, minus the Sasayaki parts (`sasayakiCue = nil`, no auto-pause). Unlike the EPUB reader, it returns `nil` without appending a popup when the lookup is empty, so no hidden popup is left to swallow the next tap. Duplication is intentional for v1 (ground rule 4). Leave a `// todo: share with ReaderViewModel` comment.
 - `rerunOCR(page:)`, `setForceOCR(_:)`, `ocrWholeBook()` with progress and cancel.
 - `jump(to pageIndex:)` for the contents sheet and page slider.
 

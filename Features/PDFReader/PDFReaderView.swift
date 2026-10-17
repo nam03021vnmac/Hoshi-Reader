@@ -100,6 +100,10 @@ struct PDFReaderView: View {
                             displayMode: userConfig.pdfDisplayMode,
                             rightToLeft: userConfig.pdfRightToLeft,
                             onPageChanged: { index in
+                                // PDFView can repeat the current page while laying out, which would hide the controls right after a tap showed them
+                                guard index != viewModel.pageIndex else {
+                                    return
+                                }
                                 viewModel.pageChanged(to: index)
                                 if !focusMode {
                                     withAnimation(.default.speed(2)) {

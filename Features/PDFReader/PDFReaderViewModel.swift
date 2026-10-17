@@ -412,12 +412,13 @@ final class PDFReaderViewModel {
         let rect = pdfView.convert(result.firstGlyphRect, from: pdfPage)
         let selection = SelectionData(text: result.text, sentence: result.sentence, rect: rect, normalizedOffset: nil, clozeOffset: result.clozeOffset)
         let config = UserConfig.shared
-        if let matched = handleTextSelection(selection, maxResults: config.maxResults, scanLength: config.scanLength, isVertical: result.isVertical, isFullWidth: config.popupFullWidth) {
-            highlight(layer: layer, glyphs: Array(result.glyphs.prefix(matched)), pageIndex: tappedPage)
-            currentScan = (tappedPage, hit)
-        } else {
+        guard let matched = handleTextSelection(selection, maxResults: config.maxResults, scanLength: config.scanLength, isVertical: result.isVertical, isFullWidth: config.popupFullWidth) else {
+            // no dictionary match, so the tap toggles the controls like a tap on blank space
             clearSelection()
+            return false
         }
+        highlight(layer: layer, glyphs: Array(result.glyphs.prefix(matched)), pageIndex: tappedPage)
+        currentScan = (tappedPage, hit)
         return true
     }
     
@@ -444,6 +445,10 @@ final class PDFReaderViewModel {
     // todo: share with ReaderViewModel
     func handleTextSelection(_ selection: SelectionData, maxResults: Int, scanLength: Int, isVertical: Bool, isFullWidth: Bool) -> Int? {
         let lookupResults = LookupEngine.shared.lookup(selection.text, maxResults: maxResults, scanLength: scanLength)
+        // a popup that never shows would make the next tap close it instead of toggling the controls
+        guard !lookupResults.isEmpty else {
+            return nil
+        }
         var dictionaryStyles: [String: String] = [:]
         for style in LookupEngine.shared.getStyles() {
             let name = String(decoding: style.dict_name.map { UInt8(bitPattern: $0) }, as: UTF8.self)
