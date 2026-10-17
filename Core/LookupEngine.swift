@@ -63,7 +63,53 @@ class LookupEngine {
         if config.frequencySortOrder.usesDictionary && !config.frequencySortDictionary.isEmpty {
             options.frequency_dictionary = .init(std.string(config.frequencySortDictionary))
         }
-        return Array(bundle.lookup.lookup(std.string(str), Int32(maxResults), scanLength, options))
+        var results = Array(bundle.lookup.lookup(std.string(str), Int32(maxResults), scanLength, options))
+
+        // dictionaries match case-sensitively, so "The" or "READING" at the start of a sentence would miss "the" and "reading"
+        let variants = Self.caseVariants(of: str)
+        guard !variants.isEmpty else {
+            return results
+        }
+        var seen = Set(results.map { Self.key(of: $0) })
+        for variant in variants {
+            for var result in bundle.lookup.lookup(std.string(variant), Int32(maxResults), scanLength, options) {
+                guard seen.insert(Self.key(of: result)).inserted else {
+                    continue
+                }
+                // show and highlight the text as written, not the case-folded variant
+                let length = String(result.matched).count
+                result.matched = std.string(String(str.prefix(length)))
+                results.append(result)
+            }
+        }
+        // stable sort: the longest match wins, the as-written results stay ahead of the case-folded ones on ties
+        let sorted = results.enumerated().sorted {
+            let lhs = String($0.element.matched).count
+            let rhs = String($1.element.matched).count
+            return lhs != rhs ? lhs > rhs : $0.offset < $1.offset
+        }
+        return sorted.prefix(maxResults).map(\.element)
+    }
+
+    private static func key(of result: LookupResult) -> String {
+        "\(String(result.term.expression))\u{0}\(String(result.term.reading))"
+    }
+
+    /// "The" → ["the"], "READING" → ["reading", "Reading"], text without uppercase letters → []
+    private static func caseVariants(of str: String) -> [String] {
+        let lowercased = str.lowercased()
+        // only fold when it keeps the length, so a match maps back onto the text as written
+        guard lowercased != str, lowercased.count == str.count else {
+            return []
+        }
+        var variants = [lowercased]
+        if let first = str.first {
+            let capitalized = String(first) + str.dropFirst().lowercased()
+            if capitalized != str, capitalized != lowercased, capitalized.count == str.count {
+                variants.append(capitalized)
+            }
+        }
+        return variants
     }
     
     func queryKanji(_ kanji: String) -> [String: Any]? {
