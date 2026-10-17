@@ -679,7 +679,8 @@ nonisolated enum PDFTextScanner {
   1. If `pdfView.currentSelection` is non-nil (native long-press selection is active), clear it and return.
   2. `let p = gesture.location(in: pdfView)`. `guard let page = pdfView.page(for: p, nearest: false)`, otherwise `onTapOutside()`.
   3. `let pagePoint = pdfView.convert(p, to: page)`. `let pageIndex = document.index(for: page)`.
-  4. Call `onPageTap(pageIndex, pagePoint)`. The view model does the rest (§9.2).
+  4. Call `onPageTap(pageIndex, pagePoint, p)`. The view model does the rest (§9.2).
+  - Both callbacks pass the tap point in the view. A tap that finds no text closes any popups first. Otherwise it shows the controls only inside the bottom 120 pt of the screen (`PDFReaderView.controlsTapZoneHeight`); anywhere else it only hides them.
 - Page turns: for paged mode, PDFView's page view controller handles swipes. Observe `Notification.Name.PDFViewPageChanged` and call `onPageChanged(index)`.
 - Geometry helper for the view model: `func rectInView(_ rect: CGRect, pageIndex: Int) -> CGRect` returns `pdfView.convert(rect, from: page)`.
 
@@ -765,7 +766,7 @@ Methods:
   if let matched = handleTextSelection(selection, isVertical: result.isVertical, ...) {
       highlight(result.glyphs.prefix(matched))                         // matched = String(firstResult.matched).count
       currentScan = (pageIndex, result)
-  } else { clear highlight; onTapOutside() }                         // no match toggles the controls like blank space
+  } else { clear highlight; onTapOutside() }                         // no match is handled like a tap on blank space
   ```
 - `handleTextSelection(_:maxResults:scanLength:isVertical:isFullWidth:) -> Int?`, `closePopups()`, `closeChildPopups(parent:)`, `clearSelection()`: **copy the logic from `ReaderViewModel`**, minus the Sasayaki parts (`sasayakiCue = nil`, no auto-pause). Unlike the EPUB reader, it returns `nil` without appending a popup when the lookup is empty, so no hidden popup is left to swallow the next tap. Duplication is intentional for v1 (ground rule 4). Leave a `// todo: share with ReaderViewModel` comment.
 - `rerunOCR(page:)`, `setForceOCR(_:)`, `ocrWholeBook()` with progress and cancel.
