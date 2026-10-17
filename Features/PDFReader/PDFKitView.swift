@@ -28,8 +28,8 @@ struct PDFKitView: UIViewRepresentable {
     let displayMode: PDFDisplayMode
     let rightToLeft: Bool
     let onPageChanged: (Int) -> Void
-    let onPageTap: (Int, CGPoint) -> Void
-    let onTapOutside: () -> Void
+    let onPageTap: (_ pageIndex: Int, _ pagePoint: CGPoint, _ viewPoint: CGPoint) -> Void
+    let onTapOutside: (_ viewPoint: CGPoint) -> Void
     let onViewportChanged: () -> Void
     let onViewCreated: (PDFView, PDFHighlightOverlayProvider) -> Void
     
@@ -147,15 +147,15 @@ struct PDFKitView: UIViewRepresentable {
             }
             let point = gesture.location(in: pdfView)
             guard let page = pdfView.page(for: point, nearest: false) else {
-                parent.onTapOutside()
+                parent.onTapOutside(point)
                 return
             }
             let index = document.index(for: page)
             guard index != NSNotFound else {
-                parent.onTapOutside()
+                parent.onTapOutside(point)
                 return
             }
-            parent.onPageTap(index, pdfView.convert(point, to: page))
+            parent.onPageTap(index, pdfView.convert(point, to: page), point)
         }
         
         /// Toggles between fitting the page and filling the screen with it, keeping the zoomed view inside the page.
@@ -255,7 +255,7 @@ struct PDFKitView: UIViewRepresentable {
             }
             return nil
         }
-        
+
         /// Continuous pages, a zoomed page, or the page turn in paged mode, while still moving after a flick
         private static func deceleratingScrollViews(in view: UIView) -> [UIScrollView] {
             var result: [UIScrollView] = []

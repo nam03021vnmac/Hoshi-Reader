@@ -25,6 +25,9 @@ struct PDFReaderView: View {
         _bottomSafeArea = State(initialValue: UIDevice.current.userInterfaceIdiom == .pad ? 20 : UIApplication.bottomSafeArea)
     }
     
+    /// Height of the strip at the bottom of the screen where a tap shows the controls
+    private static let controlsTapZoneHeight: CGFloat = 120
+
     private var readerBottomPadding: CGFloat {
         bottomSafeArea > 0 ? bottomSafeArea : max(topSafeArea, 25)
     }
@@ -76,14 +79,19 @@ struct PDFReaderView: View {
         OCRModelStore.shared.state(for: viewModel.ocrPack)
     }
     
-    private func handleTapOutside() {
+    /// Only taps at the bottom of the screen show the controls; anywhere else a tap just hides them.
+    private func handleTapOutside(at point: CGPoint, screenHeight: CGFloat) {
         viewModel.clearSelection()
-        if viewModel.popups.isEmpty {
-            withAnimation(.default.speed(2)) {
-                focusMode.toggle()
-            }
-        } else {
+        guard viewModel.popups.isEmpty else {
             viewModel.closePopups()
+            return
+        }
+        let inControlsZone = point.y >= screenHeight - Self.controlsTapZoneHeight
+        guard inControlsZone || !focusMode else {
+            return
+        }
+        withAnimation(.default.speed(2)) {
+            focusMode.toggle()
         }
     }
     
@@ -111,15 +119,15 @@ struct PDFReaderView: View {
                                     }
                                 }
                             },
-                            onPageTap: { index, point in
+                            onPageTap: { index, pagePoint, viewPoint in
                                 Task {
-                                    if await !viewModel.handlePageTap(pageIndex: index, point: point) {
-                                        handleTapOutside()
+                                    if await !viewModel.handlePageTap(pageIndex: index, point: pagePoint) {
+                                        handleTapOutside(at: viewPoint, screenHeight: geometry.size.height)
                                     }
                                 }
                             },
-                            onTapOutside: {
-                                handleTapOutside()
+                            onTapOutside: { viewPoint in
+                                handleTapOutside(at: viewPoint, screenHeight: geometry.size.height)
                             },
                             onViewportChanged: {
                                 viewModel.viewportChanged()
