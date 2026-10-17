@@ -673,6 +673,8 @@ nonisolated enum PDFTextScanner {
   - `cancelsTouchesInView = false` and `delaysTouchesEnded = false`.
   - Delegate `shouldRecognizeSimultaneouslyWith` returns `true` (except for `UILongPressGestureRecognizer`, as in `ReaderWebView`).
   - **Don't** `require(toFail:)` PDFView's double-tap. That adds a 300 ms delay to every lookup. Accept that a double-tap zoom also triggers a lookup on its first tap.
+- Adds its own double-tap recognizer that replaces PDFView's double-tap zoom (PDFView's waits for it through `shouldBeRequiredToFailBy`). It toggles between fit and filling the screen with the page, zooming the page's own scroll view to a rect clamped to the page, so the background around the page never shows. Continuous mode already fits the width, so it zooms 2x there.
+- A touch that lands while any scroll view in the PDFView is decelerating (continuous pages, a zoomed page, or a page turn) only stops the scroll. Delegate `shouldReceive touch` returns `false` for both tap recognizers, so the tap neither looks up a word nor toggles the controls. UIScrollView normally stops on touch down by itself. If it is still decelerating on the next main-queue turn, the coordinator stops it with `setContentOffset(contentOffset, animated: false)`. It skips paging scroll views (they would stop between pages) and scroll views bouncing back from past an edge.
 - `handleTap`:
   1. If `pdfView.currentSelection` is non-nil (native long-press selection is active), clear it and return.
   2. `let p = gesture.location(in: pdfView)`. `guard let page = pdfView.page(for: p, nearest: false)`, otherwise `onTapOutside()`.

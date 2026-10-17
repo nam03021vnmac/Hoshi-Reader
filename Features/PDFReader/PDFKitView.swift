@@ -71,6 +71,15 @@ struct PDFKitView: UIViewRepresentable {
         tap.delaysTouchesEnded = false
         pdfView.addGestureRecognizer(tap)
         
+        // replaces PDFView's own double-tap zoom, which leaves the background around the page on screen
+        let doubleTap = UITapGestureRecognizer(target: context.coordinator, action: #selector(Coordinator.handleDoubleTap))
+        doubleTap.numberOfTapsRequired = 2
+        doubleTap.delegate = context.coordinator
+        doubleTap.cancelsTouchesInView = false
+        doubleTap.delaysTouchesEnded = false
+        pdfView.addGestureRecognizer(doubleTap)
+        context.coordinator.doubleTap = doubleTap
+        
         NotificationCenter.default.addObserver(
             context.coordinator,
             selector: #selector(Coordinator.pageChanged),
@@ -118,6 +127,7 @@ struct PDFKitView: UIViewRepresentable {
     class Coordinator: NSObject, UIGestureRecognizerDelegate {
         var parent: PDFKitView
         weak var pdfView: PDFView?
+        weak var doubleTap: UITapGestureRecognizer?
         var overlayProvider: PDFHighlightOverlayProvider?
         var restoringPage: Int?
         private var scrollObservation: NSKeyValueObservation?
@@ -146,6 +156,67 @@ struct PDFKitView: UIViewRepresentable {
                 return
             }
             parent.onPageTap(index, pdfView.convert(point, to: page))
+        }
+        
+        /// Toggles between fitting the page and filling the screen with it, keeping the zoomed view inside the page.
+        @objc func handleDoubleTap(_ gesture: UITapGestureRecognizer) {
+            guard let pdfView else {
+                return
+            }
+            let point = gesture.location(in: pdfView)
+            guard let scrollView = Self.zoomingScrollView(at: point, in: pdfView),
+                  let zoomView = scrollView.delegate?.viewForZooming?(in: scrollView) else {
+                return
+            }
+            let fitScale = pdfView.scaleFactorForSizeToFit
+            if fitScale > 0, pdfView.scaleFactor > fitScale * 1.01 {
+                let zoomScale = scrollView.zoomScale * fitScale / pdfView.scaleFactor
+                scrollView.setZoomScale(max(zoomScale, scrollView.minimumZoomScale), animated: true)
+                return
+            }
+            guard let page = pdfView.page(for: point, nearest: true) else {
+                return
+            }
+            let pageRect = pdfView.convert(page.bounds(for: pdfView.displayBox), from: page)
+            let viewSize = pdfView.bounds.size
+            guard pageRect.width > 0, pageRect.height > 0 else {
+                return
+            }
+            var factor = max(viewSize.width / pageRect.width, viewSize.height / pageRect.height)
+            if factor < 1.05 {
+                // the page already fills the screen (continuous mode fits the width)
+                factor = 2
+            }
+            let size = CGSize(width: viewSize.width / factor, height: viewSize.height / factor)
+            let target = CGRect(
+                x: Self.clamp(point.x - size.width / 2, size.width, within: pageRect.minX, pageRect.maxX),
+                y: Self.clamp(point.y - size.height / 2, size.height, within: pageRect.minY, pageRect.maxY),
+                width: size.width,
+                height: size.height
+            )
+            scrollView.zoom(to: pdfView.convert(target, to: zoomView), animated: true)
+        }
+        
+        /// Keeps a span of `length` starting at `origin` inside `lower...upper`, centering it when it doesn't fit.
+        private static func clamp(_ origin: CGFloat, _ length: CGFloat, within lower: CGFloat, _ upper: CGFloat) -> CGFloat {
+            if length >= upper - lower {
+                return (lower + upper - length) / 2
+            }
+            return min(max(origin, lower), upper - length)
+        }
+        
+        /// In paged mode every page has its own zooming scroll view, so look up the one under the tap.
+        private static func zoomingScrollView(at point: CGPoint, in pdfView: PDFView) -> UIScrollView? {
+            var view = pdfView.hitTest(point, with: nil)
+            while let current = view, current !== pdfView.superview {
+                if let scrollView = current as? UIScrollView,
+                   scrollView.maximumZoomScale > scrollView.minimumZoomScale,
+                   scrollView.delegate?.viewForZooming?(in: scrollView) != nil {
+                    return scrollView
+                }
+                view = current.superview
+            }
+            return nil
         }
         
         @objc func scaleChanged() {
@@ -185,6 +256,37 @@ struct PDFKitView: UIViewRepresentable {
             return nil
         }
         
+        /// Continuous pages, a zoomed page, or the page turn in paged mode, while still moving after a flick
+        private static func deceleratingScrollViews(in view: UIView) -> [UIScrollView] {
+            var result: [UIScrollView] = []
+            if let scrollView = view as? UIScrollView, scrollView.isDecelerating {
+                result.append(scrollView)
+            }
+            for subview in view.subviews {
+                result += deceleratingScrollViews(in: subview)
+            }
+            return result
+        }
+
+        /// UIScrollView stops on touch down by itself, this covers the times PDFView's keeps going.
+        private static func stopDecelerating(_ scrollView: UIScrollView) {
+            // a paging scroll view would stop between pages
+            guard scrollView.isDecelerating, !scrollView.isPagingEnabled else {
+                return
+            }
+            // one bouncing back from past its edge would stay there
+            let inset = scrollView.adjustedContentInset
+            let offset = scrollView.contentOffset
+            let minX = -inset.left
+            let minY = -inset.top
+            let maxX = max(minX, scrollView.contentSize.width + inset.right - scrollView.bounds.width)
+            let maxY = max(minY, scrollView.contentSize.height + inset.bottom - scrollView.bounds.height)
+            guard offset.x >= minX - 1, offset.x <= maxX + 1, offset.y >= minY - 1, offset.y <= maxY + 1 else {
+                return
+            }
+            scrollView.setContentOffset(offset, animated: false)
+        }
+        
         @objc func pageChanged() {
             guard let pdfView, let document = pdfView.document, let page = pdfView.currentPage else {
                 return
@@ -202,8 +304,34 @@ struct PDFKitView: UIViewRepresentable {
             parent.onPageChanged(index)
         }
         
+        /// A tap on pages that are still moving only stops them, it doesn't look up a word or toggle the controls.
+        func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer, shouldReceive touch: UITouch) -> Bool {
+            guard let pdfView else {
+                return true
+            }
+            let moving = Self.deceleratingScrollViews(in: pdfView)
+            if moving.isEmpty {
+                return true
+            }
+            // after the scroll views have handled the touch
+            DispatchQueue.main.async {
+                moving.forEach(Self.stopDecelerating)
+            }
+            return false
+        }
+
         func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer, shouldRecognizeSimultaneouslyWith otherGestureRecognizer: UIGestureRecognizer) -> Bool {
             !(otherGestureRecognizer is UILongPressGestureRecognizer)
+        }
+        
+        func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer, shouldBeRequiredToFailBy otherGestureRecognizer: UIGestureRecognizer) -> Bool {
+            // PDFView's double-tap zoom waits for ours, which always wins
+            guard gestureRecognizer === doubleTap,
+                  let other = otherGestureRecognizer as? UITapGestureRecognizer,
+                  other !== doubleTap else {
+                return false
+            }
+            return other.numberOfTapsRequired == 2
         }
     }
 }
