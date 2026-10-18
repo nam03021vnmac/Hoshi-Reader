@@ -1906,6 +1906,7 @@
     },
     "Model" : {
       "comment" : "Context: Shared Hoshi Reader label or action. Surrounding UI may be a settings row, alert button, toolbar item, or reader context menu.",
+      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -2465,6 +2466,7 @@
       }
     },
     "Recognizing pages %lld / %lld" : {
+      "comment" : "Context: PDF reader. Surrounding UI is the reader menu, overlays, sheets, or alerts for PDF books.",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -2478,8 +2480,7 @@
             "value" : "正在识别页面 %1$lld / %2$lld"
           }
         }
-      },
-      "comment" : "Context: PDF reader. Surrounding UI is the reader menu, overlays, sheets, or alerts for PDF books."
+      }
     },
     "Recognizing text…" : {
       "comment" : "Context: PDF reader. Surrounding UI is the reader menu, overlays, sheets, or alerts for PDF books.",
