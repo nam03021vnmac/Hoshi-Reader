@@ -26,6 +26,7 @@ nonisolated struct PDFScanResult: Sendable {
 nonisolated enum PDFTextScanner {
     private static let sentenceWindow = 500
 
+    /// The glyph a lookup starts from: the tapped glyph, or the start of the tapped word in space-separated text
     static func hitTest(_ layer: PDFTextLayer, point: CGPoint) -> PDFGlyphRef? {
         // a direct hit on furigana wins: OCR main-line boxes usually include the ruby column
         let ruby = nearestGlyph(layer, point: point, ruby: true)
@@ -34,12 +35,36 @@ nonisolated enum PDFTextScanner {
         }
         let main = nearestGlyph(layer, point: point, ruby: false)
         if let inside = main.inside {
-            return inside
+            return wordStart(of: inside, in: layer)
         }
         if let nearest = main.nearest {
-            return nearest
+            return wordStart(of: nearest, in: layer)
         }
         return ruby.nearest.flatMap { baseGlyph(for: $0, in: layer) }
+    }
+
+    // Mirrors findWordStart in selection.js, within one line
+    private static func wordStart(of hit: PDFGlyphRef, in layer: PDFTextLayer) -> PDFGlyphRef {
+        let glyphs = layer.lines[hit.line].glyphs
+        guard JapaneseText.isWordCharacter(glyphs[hit.glyph].character) else {
+            return hit
+        }
+        var start = hit.glyph
+        var index = hit.glyph
+        while index > 0 {
+            let character = glyphs[index - 1].character
+            // an apostrophe belongs to the word only between letters (don't), not as a quote ('word)
+            let inWord = JapaneseText.isWordCharacter(character) ||
+                (JapaneseText.isApostrophe(character) && index > 1 && JapaneseText.isWordCharacter(glyphs[index - 2].character))
+            guard inWord else {
+                break
+            }
+            index -= 1
+            if JapaneseText.isWordCharacter(character) {
+                start = index
+            }
+        }
+        return PDFGlyphRef(line: hit.line, glyph: start)
     }
 
     static func scan(_ layer: PDFTextLayer, from hit: PDFGlyphRef, maxLength: Int, scanNonJapaneseText: Bool) -> PDFScanResult? {

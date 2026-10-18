@@ -62,6 +62,18 @@ nonisolated enum JapaneseText {
         return isCodePointJapanese(scalar.value)
     }
 
+    /// Letters of space-separated scripts (English etc.), where a lookup has to start at the beginning of the word
+    static func isWordCharacter(_ string: String) -> Bool {
+        guard let first = string.first, string.count == 1, !isJapanese(string) else {
+            return false
+        }
+        return first.isLetter || first.isNumber
+    }
+
+    static func isApostrophe(_ string: String) -> Bool {
+        string == "'" || string == "\u{2019}"
+    }
+
     static func isScanBoundary(_ string: String, scanNonJapaneseText: Bool) -> Bool {
         guard let first = string.first else {
             return true
