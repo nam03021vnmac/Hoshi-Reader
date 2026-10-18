@@ -115,6 +115,10 @@ nonisolated enum EmbeddedTextExtractor {
                 overlap = min(last.maxX, next.maxX) - max(last.minX, next.minX)
                 minCross = min(last.width, next.width)
             }
+            let cross = orientation == .vertical ? (last.width, next.width) : (last.height, next.height)
+            guard GeometricLines.isSimilarSize(cross.0, cross.1) else {
+                return false
+            }
             return gap < 1.5 * size && gap > -0.6 * size && overlap > 0.5 * minCross
         }
     }
@@ -163,6 +167,10 @@ nonisolated enum GeometricLines {
     
     /// Gap along the reading axis, positive when `b` follows `a`
     private static func gap(_ a: CGRect, _ b: CGRect, vertical: Bool) -> CGFloat? {
+        // furigana overlaps the selection box of its base text, but is about half its size
+        guard isSimilarSize(vertical ? a.width : a.height, vertical ? b.width : b.height) else {
+            return nil
+        }
         if vertical {
             guard b.midY < a.midY else {
                 return nil
@@ -181,6 +189,11 @@ nonisolated enum GeometricLines {
             return nil
         }
         return b.minX - a.maxX
+    }
+
+    /// Cross-axis sizes of glyphs or lines that can share a line, ruby is about half the size of its base text
+    static func isSimilarSize(_ a: CGFloat, _ b: CGFloat) -> Bool {
+        min(a, b) >= 0.7 * max(a, b)
     }
     
     private static func medianGap(_ glyphs: [PDFGlyph], vertical: Bool, size: CGFloat) -> CGFloat? {

@@ -93,7 +93,8 @@ nonisolated enum LayoutAnalyzer {
         let overlap = vertical
             ? overlapLength(a.bounds.minX, a.bounds.maxX, b.bounds.minX, b.bounds.maxX)
             : overlapLength(a.bounds.minY, a.bounds.maxY, b.bounds.minY, b.bounds.maxY)
-        guard overlap > 0.5 * min(a.thickness, b.thickness) else {
+        guard overlap > 0.5 * min(a.thickness, b.thickness),
+              GeometricLines.isSimilarSize(a.thickness, b.thickness) else {
             return nil
         }
         // reading axis gap, ordered so that `first` precedes `second`
@@ -115,13 +116,13 @@ nonisolated enum LayoutAnalyzer {
 
     /// Returns ruby line index -> index of the main line it annotates.
     private static func detectRuby(_ lines: [PDFTextLine]) -> [Int: Int] {
-        // weighted by glyph count, so pages with many short ruby lines still find the body text size
-        let thicknesses = lines.filter { $0.glyphs.count >= 3 }.map { ($0.thickness, $0.glyphs.count) }.sorted { $0.0 < $1.0 }
-        var remaining = Double(thicknesses.reduce(0) { $0 + $1.1 }) / 2
+        // weighted by area (glyph count × thickness), so pages with lots of ruby or tiny text still find the body text size
+        let thicknesses = lines.filter { $0.glyphs.count >= 3 }.map { ($0.thickness, Double($0.glyphs.count) * $0.thickness) }.sorted { $0.0 < $1.0 }
+        var remaining = thicknesses.reduce(0) { $0 + $1.1 } / 2
         var median: CGFloat = 0
-        for (thickness, count) in thicknesses {
+        for (thickness, weight) in thicknesses {
             median = thickness
-            remaining -= Double(count)
+            remaining -= weight
             if remaining <= 0 {
                 break
             }
