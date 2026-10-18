@@ -86,6 +86,53 @@ window.hoshiSelection = {
         (window.scanNonJapaneseText === false && !this.isCodePointJapanese(char.codePointAt(0)));
     },
     
+    // Letters of space-separated scripts (English etc.), where a lookup has to start at the beginning of the word
+    isWordChar(char) {
+        return /^[\p{L}\p{M}\p{N}]$/u.test(char) && !this.isCodePointJapanese(char.codePointAt(0));
+    },
+
+    isApostrophe(char) {
+        return char === "'" || char === '’';
+    },
+
+    // Moves a hit inside a word back to the first character of that word
+    findWordStart(hit) {
+        const charAt = (text, i) => String.fromCodePoint(text.codePointAt(i));
+        if (!this.isWordChar(charAt(hit.node.textContent, hit.offset))) {
+            return hit;
+        }
+
+        const walker = this.createWalker(this.findParagraph(hit.node) || document.body);
+        walker.currentNode = hit.node;
+        let start = hit;
+        let node = hit.node;
+        let offset = hit.offset;
+
+        while (node) {
+            const text = node.textContent;
+            while (offset > 0) {
+                let prev = offset - 1;
+                if (prev > 0 && /[\uDC00-\uDFFF]/.test(text[prev]) && /[\uD800-\uDBFF]/.test(text[prev - 1])) {
+                    prev--;
+                }
+                const char = text.slice(prev, offset);
+                // an apostrophe belongs to the word only between letters (don't), not as a quote ('word)
+                const inWord = this.isWordChar(char) ||
+                (this.isApostrophe(char) && prev > 0 && this.isWordChar(charAt(text, prev - 1)));
+                if (!inWord) {
+                    return start;
+                }
+                offset = prev;
+                if (this.isWordChar(char)) {
+                    start = { node, offset };
+                }
+            }
+            node = walker.previousNode();
+            offset = node ? node.textContent.length : 0;
+        }
+        return start;
+    },
+
     isFurigana(node) {
         const el = node.nodeType === Node.TEXT_NODE ? node.parentElement : node;
         return !!el?.closest('rt, rp');
@@ -337,12 +384,14 @@ window.hoshiSelection = {
             return 'furigana';
         }
         
-        const hit = this.getCharacterAtPoint(x, y);
-        
-        if (!hit) {
+        const tapped = this.getCharacterAtPoint(x, y);
+
+        if (!tapped) {
             this.clearSelection();
             return null;
         }
+
+        const hit = this.findWordStart(tapped);
         
         if (this.selection &&
             hit.node === this.selection.startNode &&
