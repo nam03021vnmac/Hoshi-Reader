@@ -611,8 +611,8 @@ class UserConfig {
         self.readerShowReadingTime = defaults.object(forKey: "readerShowReadingTime") as? Bool ?? false
         self.readerShowSasayakiToggle = defaults.object(forKey: "readerShowSasayakiToggle") as? Bool ?? false
         
-        self.popupWidth = defaults.object(forKey: "popupWidth") as? Int ?? 350
-        self.popupHeight = defaults.object(forKey: "popupHeight") as? Int ?? 310
+        self.popupWidth = defaults.object(forKey: "popupWidth") as? Int ?? 420
+        self.popupHeight = defaults.object(forKey: "popupHeight") as? Int ?? 450
         self.popupScale = defaults.object(forKey: "popupScale") as? Double ?? 1.0
         self.popupActionBar = defaults.object(forKey: "popupActionBar") as? Bool ?? false
         self.popupDisableTransparency = defaults.object(forKey: "popupDisableTransparency") as? Bool ?? false
