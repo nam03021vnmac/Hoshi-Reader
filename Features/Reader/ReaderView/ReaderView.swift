@@ -152,6 +152,21 @@ struct ReaderView: View {
         }
     }
     
+    private var doubleTapSeekEnabled: Bool {
+        userConfig.enableSasayaki && userConfig.sasayakiDoubleTapSeek && viewModel.sasayakiPlayer.hasAudio && viewModel.sasayakiPlayer.hasMatch
+    }
+    
+    private func handleDoubleTapText(_ offset: Int) -> Bool {
+        guard viewModel.handleDoubleTapSeek(offset: offset) else { return false }
+        sasayakiControlsExpanded = false
+        if !focusMode {
+            withAnimation(.default.speed(2)) {
+                focusMode = true
+            }
+        }
+        return true
+    }
+    
     private func handleTapOutside(clearSelection: Bool = false) {
         if clearSelection {
             viewModel.clearSelection()
@@ -394,7 +409,10 @@ struct ReaderView: View {
                             },
                             onHighlightCreated: viewModel.addHighlight,
                             onHighlightUpdated: viewModel.updateHighlight,
-                            onImageTapped: { imageURL = $0 }
+                            onImageTapped: { imageURL = $0 },
+                            doubleTapSeekEnabled: doubleTapSeekEnabled,
+                            canSeekText: viewModel.hasSasayakiCue,
+                            onDoubleTapText: handleDoubleTapText
                         )
                         .id(WebViewState(
                             verticalWriting: userConfig.verticalWriting,
@@ -459,7 +477,10 @@ struct ReaderView: View {
                             },
                             onHighlightCreated: viewModel.addHighlight,
                             onHighlightUpdated: viewModel.updateHighlight,
-                            onImageTapped: { imageURL = $0 }
+                            onImageTapped: { imageURL = $0 },
+                            doubleTapSeekEnabled: doubleTapSeekEnabled,
+                            canSeekText: viewModel.hasSasayakiCue,
+                            onDoubleTapText: handleDoubleTapText
                         )
                         .id(WebViewState(
                             verticalWriting: userConfig.verticalWriting,
