@@ -484,6 +484,10 @@ class UserConfig {
         didSet { UserDefaults.standard.set(sasayakiAutoPause, forKey: "sasayakiAutoPause") }
     }
     
+    var sasayakiDoubleTapSeek: Bool {
+        didSet { UserDefaults.standard.set(sasayakiDoubleTapSeek, forKey: "sasayakiDoubleTapSeek") }
+    }
+    
     var sasayakiImagePause: Bool {
         didSet { UserDefaults.standard.set(sasayakiImagePause, forKey: "sasayakiImagePause") }
     }
@@ -653,6 +657,7 @@ class UserConfig {
         self.enableSasayaki = defaults.object(forKey: "enableSasayaki") as? Bool ?? false
         self.sasayakiAutoScroll = defaults.object(forKey: "sasayakiAutoScroll") as? Bool ?? true
         self.sasayakiAutoPause = defaults.object(forKey: "sasayakiAutoPause") as? Bool ?? true
+        self.sasayakiDoubleTapSeek = defaults.object(forKey: "sasayakiDoubleTapSeek") as? Bool ?? true
         self.sasayakiImagePause = defaults.object(forKey: "sasayakiImagePause") as? Bool ?? true
         self.sasayakiImagePauseDuration = defaults.object(forKey: "sasayakiImagePauseDuration") as? Double ?? 3
         self.sasayakiShowControlBar = defaults.object(forKey: "sasayakiShowControlBar") as? Bool ?? true

@@ -460,6 +460,19 @@ window.hoshiSelection = {
         return text;
     },
     
+    hitTest(x, y) {
+        const el = document.elementFromPoint(x, y);
+        if (el?.closest('a, img, image, .blur-wrapper')) {
+            return null;
+        }
+        const tapped = this.getCharacterAtPoint(x, y);
+        if (!tapped || !window.hoshiReader) {
+            return null;
+        }
+        const hit = this.findWordStart(tapped);
+        return this.getNormalizedOffset(hit.node, hit.offset);
+    },
+    
     getSelectionRect(x, y) {
         if (!this.selection?.ranges.length) {
             return null;

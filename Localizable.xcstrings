@@ -1224,6 +1224,17 @@
         }
       }
     },
+    "Double-Tap Text to Play Audio" : {
+      "comment" : "Context: Sasayaki audiobook feature screens. Surrounding UI includes setup instructions, SRT/audio matching, playback controls, command center options, and Sasayaki theme settings. Preserve Markdown and product names.",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "双击文本播放音频"
+          }
+        }
+      }
+    },
     "Download" : {
       "comment" : "Context: Shared Hoshi Reader label or action. Surrounding UI may be a settings row, alert button, toolbar item, or reader context menu.",
       "localizations" : {
