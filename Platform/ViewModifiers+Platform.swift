@@ -31,7 +31,53 @@ extension View {
         self
         #endif
     }
+
+    /// Rebuilds the reader's web view whenever its layout changes. A macOS window resize
+    /// changes the size on every frame, so there the rebuild waits until the size settles.
+    func readerLayoutID<ID: Hashable>(_ id: ID) -> some View {
+        #if os(macOS)
+        modifier(SettledID(id: id))
+        #else
+        self.id(id)
+        #endif
+    }
+
+    /// Runs `action` when Esc is pressed. On iOS this does nothing.
+    func onEscapeKey(perform action: @escaping () -> Void) -> some View {
+        #if os(macOS)
+        onExitCommand(perform: action)
+        #else
+        self
+        #endif
+    }
 }
+
+#if os(macOS)
+/// Applies `.id(id)` once `id` has stopped changing for a moment.
+private struct SettledID<ID: Hashable>: ViewModifier {
+    let id: ID
+    @State private var settledID: ID
+
+    init(id: ID) {
+        self.id = id
+        _settledID = State(initialValue: id)
+    }
+
+    func body(content: Content) -> some View {
+        content
+            .id(settledID)
+            .task(id: id) {
+                guard id != settledID else { return }
+                do {
+                    try await Task.sleep(for: .milliseconds(300))
+                } catch {
+                    return
+                }
+                settledID = id
+            }
+    }
+}
+#endif
 
 extension ToolbarItemPlacement {
     /// The button that closes a sheet, such as Done. iOS puts it in the navigation bar. macOS

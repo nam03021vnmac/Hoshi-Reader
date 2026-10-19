@@ -56,7 +56,7 @@ struct ContentsSheet: View {
     var body: some View {
         NavigationStack {
             Group {
-                if isSearchPresented {
+                if showsSearchResults {
                     SearchResultsView(results: searchResults, query: searchQuery) { result in
                         jump {
                             viewModel.jumpToSearchResult(
@@ -80,10 +80,19 @@ struct ContentsSheet: View {
                 searchQuery = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
             }
             .onChange(of: isSearchPresented) { _, presented in
+                #if os(iOS)
                 if !presented {
                     searchQuery = ""
                 }
+                #endif
             }
+            #if os(macOS)
+            .onChange(of: searchText) { _, text in
+                if text.isEmpty {
+                    searchQuery = ""
+                }
+            }
+            #endif
             .task(id: searchQuery) {
                 await search()
             }
@@ -96,7 +105,7 @@ struct ContentsSheet: View {
             .navigationTitle(viewModel.book.displayTitle)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
+                ToolbarItem(placement: .sheetDismiss) {
                     Button {
                         dismiss()
                     } label: {
@@ -125,6 +134,18 @@ struct ContentsSheet: View {
             Text("Please enter a valid character count")
         }
     }
+    
+    #if os(macOS)
+    /// The toolbar search field takes focus as soon as the sheet opens, so results show
+    /// once a search is submitted and go away when the field is cleared.
+    private var showsSearchResults: Bool {
+        !searchQuery.isEmpty
+    }
+    #else
+    private var showsSearchResults: Bool {
+        isSearchPresented
+    }
+    #endif
     
     private var contents: some View {
         VStack(spacing: 0) {

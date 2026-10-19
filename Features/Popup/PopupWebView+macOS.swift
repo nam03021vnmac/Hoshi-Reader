@@ -52,33 +52,9 @@ extension PopupWebView.Coordinator {
 /// Removes the default context menu items that navigate the web view or open a new window,
 /// since the popup is a single page loaded from a string.
 private final class PopupMacWebView: WKWebView {
-    private static let removedMenuItems: Set<String> = [
-        "WKMenuItemIdentifierReload",
-        "WKMenuItemIdentifierGoBack",
-        "WKMenuItemIdentifierGoForward",
-        "WKMenuItemIdentifierOpenLinkInNewWindow",
-        "WKMenuItemIdentifierDownloadLinkedFile",
-        "WKMenuItemIdentifierOpenImageInNewWindow",
-        "WKMenuItemIdentifierDownloadImage",
-        "WKMenuItemIdentifierOpenFrameInNewWindow",
-        "WKMenuItemIdentifierOpenMediaInNewWindow",
-        "WKMenuItemIdentifierDownloadMedia",
-    ]
-
     override func willOpenMenu(_ menu: NSMenu, with event: NSEvent) {
         super.willOpenMenu(menu, with: event)
-        menu.items.removeAll { item in
-            item.identifier.map { Self.removedMenuItems.contains($0.rawValue) } ?? false
-        }
-        // drop the separators the removed items leave at the ends or next to each other
-        var previousWasSeparator = true
-        menu.items.removeAll { item in
-            defer { previousWasSeparator = item.isSeparatorItem }
-            return item.isSeparatorItem && previousWasSeparator
-        }
-        if menu.items.last?.isSeparatorItem == true {
-            menu.items.removeLast()
-        }
+        menu.removeWebViewNavigationItems()
     }
 }
 
