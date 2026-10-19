@@ -51,6 +51,8 @@ struct CSSEditorView: View {
             dictionaryMenu
                 .conditionalGlassEffect()
             Spacer()
+            // Macs have no on-screen keyboard to dismiss
+            #if os(iOS)
             if isFocused {
                 Button {
                     isFocused = false
@@ -63,6 +65,7 @@ struct CSSEditorView: View {
                 .buttonStyle(.plain)
                 .conditionalGlassEffect()
             }
+            #endif
         }
         .padding(8)
     }

@@ -38,7 +38,7 @@ struct HoshiReaderApp: App {
     }
     
     var body: some Scene {
-        WindowGroup {
+        LibraryWindow {
             Group {
                 if didFinishLaunch {
                     BookshelfView(
@@ -93,6 +93,13 @@ struct HoshiReaderApp: App {
         #if os(macOS)
         .commands {
             MacCommands()
+        }
+        #endif
+
+        #if os(macOS)
+        Settings {
+            MacSettingsView()
+                .environment(userConfig)
         }
         #endif
     }

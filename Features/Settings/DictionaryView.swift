@@ -164,6 +164,11 @@ struct DictionaryView: View {
                                 .foregroundStyle(.secondary)
                         }
                     }
+                    .macDeleteMenu {
+                        if let index = dictionaries.firstIndex(where: { $0.id == dict.id }) {
+                            dictionaryManager.deleteDictionary(indexSet: IndexSet(integer: index), type: selectedType)
+                        }
+                    }
                 }
                 .onMove { from, to in
                     dictionaryManager.moveDictionary(from: from, to: to, type: selectedType)
@@ -187,6 +192,7 @@ struct DictionaryView: View {
         }
         .sheet(isPresented: $showCSSEditor) {
             DictionaryDetailSettingView()
+                .sheetFrame(minWidth: 560, minHeight: 480)
         }
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
@@ -442,14 +448,14 @@ struct DictionaryDetailSettingView: View {
                 .navigationTitle(String(localized: "Custom CSS", table: "Dictionaries"))
                 .navigationBarTitleDisplayMode(.inline)
                 .toolbar {
-                    ToolbarItem(placement: .topBarLeading) {
+                    ToolbarItem(placement: .sheetDestructive) {
                         Button(role: .destructive) {
                             customCSS = ""
                         } label: {
                             Text("Reset", tableName: "Dictionaries")
                         }
                     }
-                    ToolbarItem(placement: .topBarTrailing) {
+                    ToolbarItem(placement: .sheetDismiss) {
                         Button {
                             dismiss()
                         } label: {

@@ -44,6 +44,10 @@ struct StatisticsEditView: View {
                         }
                     }
                     .foregroundStyle(.primary)
+                    .macDeleteMenu {
+                        statistics.removeAll { $0.dateKey == statistic.dateKey }
+                        StatisticsStorage.save(statistics, folder: book.folder)
+                    }
                 }
                 .onDelete { offsets in
                     statistics.remove(atOffsets: offsets)
@@ -145,5 +149,6 @@ private struct DayEditView: View {
             }
         }
         .presentationDetents([.medium])
+        .sheetFrame(minWidth: 380, minHeight: 300)
     }
 }

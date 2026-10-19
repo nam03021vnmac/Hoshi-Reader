@@ -34,6 +34,10 @@ struct AudioView: View {
                         }
                     }
                     .deleteDisabled(source.isDefault || source.url == UserConfig.localAudioSource.url)
+                    .macDeleteMenu(disabled: source.isDefault || source.url == UserConfig.localAudioSource.url) { [url = source.url] in
+                        // `source` reads through the binding, so it can't be read while removeAll mutates the array
+                        userConfig.audioSources.removeAll { $0.url == url }
+                    }
                 }
                 .onDelete { indexSet in
                     userConfig.audioSources.remove(atOffsets: indexSet)

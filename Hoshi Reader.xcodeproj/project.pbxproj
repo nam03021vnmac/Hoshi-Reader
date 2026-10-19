@@ -62,6 +62,7 @@
 				"iOS/AppDelegate+iOS.swift",
 				"macOS/AppDelegate+macOS.swift",
 				macOS/MacCommands.swift,
+				macOS/MacSettingsView.swift,
 			);
 			target = 48107AB62F114021009E12D1 /* Hoshi Reader */;
 		};

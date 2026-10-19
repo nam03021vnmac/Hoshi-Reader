@@ -94,9 +94,11 @@ struct BookshelfView: View {
                     )
                     .sheet(isPresented: $showShelfManagement) {
                         ShelfManagementView(viewModel: viewModel)
+                            .sheetFrame()
                     }
                     .sheet(item: $sasayakiBook) { book in
                         SasayakiMatchView(book: book, viewModel: viewModel)
+                            .sheetFrame()
                     }
                     .alert(
                         "Delete \(selectedBooks.count) book(s)?",
@@ -186,6 +188,9 @@ struct BookshelfView: View {
                 }
             }
         }
+        #if os(macOS)
+        .macLibraryImport(viewModel: viewModel, selectedTab: $selectedTab)
+        #endif
         .onChange(of: pendingTab) { _, tab in
             if let tab {
                 selectedTab = tab
@@ -320,6 +325,22 @@ struct BookshelfView: View {
                     Image(systemName: "checklist")
                 }
             }
+            
+            #if os(macOS)
+            // there is no pull-to-refresh on macOS
+            if userConfig.enableSync && GoogleDriveAuth.shared.isAuthenticated {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button {
+                        Task {
+                            await viewModel.loadGoogleDriveBooks()
+                        }
+                    } label: {
+                        Image(systemName: "arrow.clockwise")
+                    }
+                    .keyboardShortcut("r", modifiers: .command)
+                }
+            }
+            #endif
             
             ToolbarItem(placement: .topBarTrailing) {
                 Button {

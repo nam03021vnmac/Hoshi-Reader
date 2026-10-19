@@ -68,7 +68,7 @@ struct SasayakiMatchView: View {
             .navigationTitle("Match")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
+                ToolbarItem(placement: .sheetDismiss) {
                     Button("Done") {
                         dismiss()
                     }

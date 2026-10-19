@@ -31,7 +31,7 @@ struct ShelfManagementView: View {
                         .frame(width: 180)
                     }
                     
-                    VStack {
+                    VStack(alignment: .leading) {
                         Toggle("Reading Shelf", isOn: $userConfig.bookshelfShowReading)
                         Text("Shows books you've started but not finished.")
                             .font(.caption)
@@ -43,6 +43,9 @@ struct ShelfManagementView: View {
                 Section("Shelves") {
                     ForEach(viewModel.shelves, id: \.name) { shelf in
                         Text(shelf.name)
+                            .macDeleteMenu {
+                                viewModel.deleteShelf(name: shelf.name)
+                            }
                     }
                     .onDelete { indexSet in
                         for index in indexSet {
@@ -77,7 +80,7 @@ struct ShelfManagementView: View {
                 ToolbarItem(placement: .topBarLeading) {
                     EditButton()
                 }
-                ToolbarItem(placement: .topBarTrailing) {
+                ToolbarItem(placement: .sheetDismiss) {
                     Button("Done") { dismiss() }
                 }
             }
