@@ -72,7 +72,14 @@ class SasayakiPlayer {
     var playback = SasayakiPlaybackData(lastPosition: 0)
     var currentTime: Double = 0
     var duration: Double = 0
-    var isPlaying = false { didSet { updateIdleTimerDisabled() } }
+    var isPlaying = false {
+        didSet {
+            updateIdleTimerDisabled()
+            #if os(macOS)
+            updateNowPlayingInfo()
+            #endif
+        }
+    }
     var stopPlaybackTime: Double?
     var lastUpdate = -1
     
@@ -111,6 +118,8 @@ class SasayakiPlayer {
     var player: AVPlayer?
     #if os(iOS)
     var nowPlayingSession: MPNowPlayingSession?
+    #else
+    var remoteCommandCenter: MPRemoteCommandCenter?
     #endif
     var timeObserver: Any?
     var endObserver: NSObjectProtocol?
@@ -338,6 +347,8 @@ class SasayakiPlayer {
         Task.detached {
             try? AVAudioSession.sharedInstance().setActive(false, options: [.notifyOthersOnDeactivation])
         }
+        #else
+        tearDownNowPlaying()
         #endif
         
         if let url = audioURL {
@@ -459,6 +470,9 @@ class SasayakiPlayer {
                 if startPlayback {
                     self.startPlayback()
                 }
+                #if os(macOS)
+                self.updateNowPlayingInfo()
+                #endif
             }
         }
     }
@@ -518,6 +532,8 @@ class SasayakiPlayer {
         configureRemoteCommandCenter(nowPlayingSession!.remoteCommandCenter)
         player.replaceCurrentItem(with: item)
         nowPlayingSession?.becomeActiveIfPossible()
+        #else
+        setUpRemoteCommands()
         #endif
     }
     
@@ -675,7 +691,7 @@ class SasayakiPlayer {
     }
     #endif
     
-    private func configureRemoteCommandCenter(_ center: MPRemoteCommandCenter) {
+    func configureRemoteCommandCenter(_ center: MPRemoteCommandCenter) {
         center.playCommand.addTarget { [weak self] _ in
             Task { @MainActor in self?.startPlayback() }
             return .success
@@ -747,7 +763,7 @@ class SasayakiPlayer {
         }
     }
     
-    private func updateNowPlayingInfo() {
+    func updateNowPlayingInfo() {
         guard let item = player?.currentItem else { return }
         
         var info: [String: Any] = [:]
@@ -760,7 +776,7 @@ class SasayakiPlayer {
         }
         
         #if os(macOS)
-        MPNowPlayingInfoCenter.default().nowPlayingInfo = info
+        publishNowPlayingInfo(info)
         #else
         item.nowPlayingInfo = info
         #endif

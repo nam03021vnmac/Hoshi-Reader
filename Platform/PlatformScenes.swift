@@ -18,8 +18,11 @@ struct LibraryWindow<Content: View>: Scene {
 
     var body: some Scene {
         #if os(macOS)
-        Window("Hoshi Reader", id: "library", content: content)
-            .defaultSize(width: 1100, height: 760)
+        Window("Hoshi Reader", id: "library") {
+            content()
+                .frame(minWidth: 560, minHeight: 420)
+        }
+        .defaultSize(width: 1100, height: 760)
         #else
         WindowGroup(content: content)
         #endif

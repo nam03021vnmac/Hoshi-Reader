@@ -23,7 +23,7 @@ protocol ReaderInputHandling: AnyObject {
 /// The web view behind both readers. Clicks reach the Coordinator through `readerClick`
 /// messages from `clickScript`; keys and the scroll wheel go to `inputHandler` first; and
 /// right-clicking a selection adds a Highlight submenu to WebKit's context menu.
-final class HoshiWKWebView: WKWebView {
+final class HoshiWKWebView: WKWebView, ReaderZooming {
     var onHighlightCreated: ((HighlightColor, HighlightData) -> Void)?
     var onHighlightUpdated: ((HighlightColor, UUID) -> Void)?
     var hasSelection: Bool = false
@@ -105,6 +105,20 @@ final class HoshiWKWebView: WKWebView {
         highlight.submenu = colors
         menu.insertItem(highlight, at: 0)
         menu.insertItem(.separator(), at: 1)
+    }
+
+    // View > Zoom In and Zoom Out change the font size
+    @objc func zoomIn(_ sender: Any?) {
+        changeFontSize(by: 1)
+    }
+
+    @objc func zoomOut(_ sender: Any?) {
+        changeFontSize(by: -1)
+    }
+
+    private func changeFontSize(by step: Int) {
+        let config = UserConfig.shared
+        config.fontSize = min(max(config.fontSize + step, 16), 40)
     }
 
     @objc private func highlightSelection(_ sender: NSMenuItem) {

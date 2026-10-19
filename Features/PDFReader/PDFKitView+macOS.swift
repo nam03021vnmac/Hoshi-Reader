@@ -14,7 +14,7 @@ import SwiftUI
 /// The PDF view behind the reader on macOS. A plain click looks up a word, a double click
 /// toggles zoom, and in paged mode the keyboard, the scroll wheel and trackpad swipes turn
 /// pages. Clicks that only clear a selection, end a drag, or follow a link don't look up.
-final class ReaderPDFView: PDFView {
+final class ReaderPDFView: PDFView, ReaderZooming {
     var onClick: ((CGPoint) -> Void)?
     var onDoubleClick: ((CGPoint) -> Void)?
     var pagedNavigation: ((NavigationDirection) -> Void)?

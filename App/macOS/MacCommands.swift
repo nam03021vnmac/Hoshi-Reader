@@ -33,6 +33,33 @@ struct MacCommands: Commands {
 
             Divider()
         }
+
+        // sent to whichever reader has the keyboard: a PDF zooms, an EPUB changes its font size
+        CommandGroup(before: .toolbar) {
+            Button("Zoom In") {
+                NSApp.sendAction(#selector(ReaderZooming.zoomIn(_:)), to: nil, from: nil)
+            }
+            .keyboardShortcut("+", modifiers: .command)
+
+            Button("Zoom Out") {
+                NSApp.sendAction(#selector(ReaderZooming.zoomOut(_:)), to: nil, from: nil)
+            }
+            .keyboardShortcut("-", modifiers: .command)
+
+            Button("Zoom to Fit") {
+                NSApp.sendAction(#selector(ReaderZooming.zoomToFit(_:)), to: nil, from: nil)
+            }
+            .keyboardShortcut("0", modifiers: .command)
+
+            Divider()
+        }
     }
+}
+
+/// The zoom actions the View menu sends up the responder chain.
+@objc protocol ReaderZooming {
+    func zoomIn(_ sender: Any?)
+    func zoomOut(_ sender: Any?)
+    @objc optional func zoomToFit(_ sender: Any?)
 }
 #endif
