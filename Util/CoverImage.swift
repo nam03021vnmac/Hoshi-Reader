@@ -8,7 +8,6 @@
 
 import SwiftUI
 import ImageIO
-import UIKit
 
 struct CoverImage<Content: View, Placeholder: View>: View {
     let url: URL?
@@ -16,12 +15,12 @@ struct CoverImage<Content: View, Placeholder: View>: View {
     @ViewBuilder let content: (Image) -> Content
     @ViewBuilder let placeholder: () -> Placeholder
     
-    @State private var image: UIImage?
+    @State private var image: PlatformImage?
     
     var body: some View {
         Group {
             if let image {
-                content(Image(uiImage: image))
+                content(Image(platformImage: image))
             } else {
                 placeholder()
             }
@@ -53,7 +52,7 @@ private struct CoverImageKey: Hashable {
 private actor ThumbnailDecoder {
     static let shared = ThumbnailDecoder()
     
-    func thumbnail(url: URL, maxPixelSize: Int) -> UIImage? {
+    func thumbnail(url: URL, maxPixelSize: Int) -> PlatformImage? {
         guard FileManager.default.fileExists(atPath: url.path(percentEncoded: false)) else {
             return nil
         }
@@ -72,7 +71,7 @@ private actor ThumbnailDecoder {
         guard let cgImage = CGImageSourceCreateThumbnailAtIndex(source, 0, thumbOptions as CFDictionary) else {
             return nil
         }
-        return UIImage(cgImage: cgImage)
+        return PlatformImage(cgImage: cgImage)
     }
 }
 

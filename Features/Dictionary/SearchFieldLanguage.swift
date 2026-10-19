@@ -6,6 +6,7 @@
 //  SPDX-License-Identifier: GPL-3.0-or-later
 //
 
+#if os(iOS)
 import ObjectiveC
 import UIKit
 
@@ -39,3 +40,4 @@ extension UITextField {
         return subclass
     }
 }
+#endif

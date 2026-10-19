@@ -96,20 +96,6 @@ extension URL {
     }
 }
 
-extension UIApplication {
-    static var topSafeArea: CGFloat {
-        (shared.connectedScenes.first as? UIWindowScene)?
-            .keyWindow?
-            .safeAreaInsets.top ?? 0
-    }
-    
-    static var bottomSafeArea: CGFloat {
-        (shared.connectedScenes.first as? UIWindowScene)?
-            .keyWindow?
-            .safeAreaInsets.bottom ?? 0
-    }
-}
-
 struct LoadingOverlay: View {
     let message: String
     
@@ -122,7 +108,7 @@ struct LoadingOverlay: View {
             Color.black.opacity(0.2)
                 .ignoresSafeArea()
             Group {
-                if #available(iOS 26, *) {
+                if #available(iOS 26, macOS 26, *) {
                     VStack(spacing: 12) {
                         ProgressView()
                         Text(message)
@@ -146,7 +132,7 @@ struct LoadingOverlay: View {
 }
 
 // https://stackoverflow.com/questions/26341008/how-to-convert-uicolor-to-hex-and-display-in-nslog
-extension UIColor {
+extension PlatformColor {
     var hexString: String {
         var red: CGFloat = 0
         var green: CGFloat = 0
@@ -154,7 +140,12 @@ extension UIColor {
         var alpha: CGFloat = 0
         let multiplier: CGFloat = 255.9999999
         
+        #if os(macOS)
+        // NSColor only reports components in an RGB color space
+        (usingColorSpace(.sRGB) ?? self).getRed(&red, green: &green, blue: &blue, alpha: &alpha)
+        #else
         getRed(&red, green: &green, blue: &blue, alpha: &alpha)
+        #endif
         
         if alpha == 1.0 {
             return String(
@@ -188,7 +179,7 @@ extension View {
     
     @ViewBuilder
     func conditionalGlassEffect() -> some View {
-        if #available(iOS 26, *) {
+        if #available(iOS 26, macOS 26, *) {
             self.glassEffect(.regular.interactive())
         } else {
             self

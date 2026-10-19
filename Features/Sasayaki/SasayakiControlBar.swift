@@ -21,7 +21,7 @@ struct SasayakiControlBar: View {
     
     var body: some View {
         Group {
-            if #available(iOS 26, *) {
+            if #available(iOS 26, macOS 26, *) {
                 GlassEffectContainer(spacing: spacing) {
                     buttons
                 }
@@ -91,7 +91,7 @@ struct SasayakiControlBar: View {
 private extension View {
     @ViewBuilder
     func glass<S: InsettableShape>(_ shape: S, id: String, in namespace: Namespace.ID) -> some View {
-        if #available(iOS 26, *) {
+        if #available(iOS 26, macOS 26, *) {
             glassEffect(.regular.interactive(), in: shape)
                 .glassEffectID(id, in: namespace)
         } else {

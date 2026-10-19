@@ -179,13 +179,7 @@ class GoogleDriveAuth: NSObject {
 
 extension GoogleDriveAuth: ASWebAuthenticationPresentationContextProviding {
     func presentationAnchor(for session: ASWebAuthenticationSession) -> ASPresentationAnchor {
-        let windowScene = UIApplication.shared.connectedScenes
-            .compactMap { $0 as? UIWindowScene }
-            .first
-        guard let windowScene else {
-            return UIWindow()
-        }
-        return windowScene.keyWindow ?? windowScene.windows.first ?? UIWindow(windowScene: windowScene)
+        Platform.presentationAnchor
     }
 }
 

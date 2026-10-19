@@ -198,7 +198,7 @@ struct DictionaryView: View {
                 .disabled(dictionaryManager.isImporting || dictionaryManager.isUpdating)
             }
             
-            if #available(iOS 26.0, *) {
+            if #available(iOS 26.0, macOS 26, *) {
                 ToolbarSpacer(.fixed, placement: .topBarTrailing)
             }
             

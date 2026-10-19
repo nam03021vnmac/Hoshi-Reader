@@ -7,7 +7,6 @@
 //
 
 import PDFKit
-import UIKit
 
 nonisolated enum PDFImportError: LocalizedError {
     case unreadable
@@ -64,7 +63,7 @@ struct PDFImporter {
             var coverPath: String?
             if let page = document.page(at: 0),
                let rendered = PageRenderer.render(page, longSide: coverLongSide),
-               let data = UIImage(cgImage: rendered.image).jpegData(compressionQuality: 0.85) {
+               let data = PlatformImage(cgImage: rendered.image).jpegData(compressionQuality: 0.85) {
                 try data.write(to: bookFolder.appendingPathComponent("cover.jpg"), options: .atomic)
                 coverPath = "Books/\(safeTitle)/cover.jpg"
             }

@@ -21,8 +21,8 @@ struct PDFReaderView: View {
     
     init(book: BookMetadata) {
         _viewModel = State(initialValue: PDFReaderViewModel(book: book))
-        _topSafeArea = State(initialValue: UIDevice.current.userInterfaceIdiom == .pad ? 35 : UIApplication.topSafeArea)
-        _bottomSafeArea = State(initialValue: UIDevice.current.userInterfaceIdiom == .pad ? 20 : UIApplication.bottomSafeArea)
+        _topSafeArea = State(initialValue: Platform.isLargeDevice ? 35 : Platform.topSafeArea)
+        _bottomSafeArea = State(initialValue: Platform.isLargeDevice ? 20 : Platform.bottomSafeArea)
     }
     
     /// Height of the strip at the bottom of the screen where a tap shows the controls
@@ -448,21 +448,21 @@ struct PDFReaderView: View {
         .onChange(of: ocrModelState) {
             viewModel.refreshOCR()
         }
-        .onReceive(NotificationCenter.default.publisher(for: UIApplication.didReceiveMemoryWarningNotification)) { _ in
+        .onReceive(NotificationCenter.default.publisher(for: Platform.didReceiveMemoryWarningNotification)) { _ in
             viewModel.handleMemoryWarning()
         }
-        .onReceive(NotificationCenter.default.publisher(for: UIApplication.didEnterBackgroundNotification)) { _ in
+        .onReceive(NotificationCenter.default.publisher(for: Platform.didEnterBackgroundNotification)) { _ in
             // progress is on disk per page, so it resumes where it stopped
             viewModel.cancelBookOCR()
         }
-        .onReceive(NotificationCenter.default.publisher(for: UIApplication.willResignActiveNotification)) { _ in
+        .onReceive(NotificationCenter.default.publisher(for: Platform.willResignActiveNotification)) { _ in
             viewModel.saveBookmark()
             viewModel.flushTextLayers()
             if viewModel.isTracking {
                 viewModel.isPaused = true
             }
         }
-        .onReceive(NotificationCenter.default.publisher(for: UIApplication.didBecomeActiveNotification)) { _ in
+        .onReceive(NotificationCenter.default.publisher(for: Platform.didBecomeActiveNotification)) { _ in
             guard viewModel.isTracking, viewModel.activeSheet == nil else {
                 return
             }

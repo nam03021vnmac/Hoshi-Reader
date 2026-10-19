@@ -9,7 +9,6 @@
 import Foundation
 import SQLite3
 import libzstd
-import UIKit
 import ZIPFoundation
 
 @Observable
@@ -97,7 +96,7 @@ class AnkiManager {
         ]
         
         if let url = urlComponents?.url {
-            UIApplication.shared.open(url)
+            Platform.open(url)
         }
     }
     
@@ -119,7 +118,7 @@ class AnkiManager {
     }
     
     private func performFetch(retryCount: Int) {
-        guard let data = UIPasteboard.general.data(forPasteboardType: Self.pasteboardType) else {
+        guard let data = Platform.pasteboardData(forType: Self.pasteboardType) else {
             if retryCount < 3 {
                 fetch(retryCount: retryCount + 1)
                 return
@@ -127,7 +126,7 @@ class AnkiManager {
             errorMessage = String(localized: "No data received from Anki. Please try again.")
             return
         }
-        UIPasteboard.general.setData(Data(), forPasteboardType: Self.pasteboardType)
+        Platform.setPasteboardData(Data(), forType: Self.pasteboardType)
         
         guard let response = try? JSONDecoder().decode(AnkiResponse.self, from: data) else {
             let rawString = String(data: data, encoding: .utf8) ?? "Unable to read data"
@@ -235,7 +234,7 @@ class AnkiManager {
         urlComponents?.queryItems = queryItems
         
         if let url = urlComponents?.url {
-            await UIApplication.shared.open(url)
+            await Platform.open(url)
         }
         
         return false
@@ -443,7 +442,7 @@ class AnkiManager {
             ]
             
             if let url = urlComponents?.url {
-                await UIApplication.shared.open(url)
+                await Platform.open(url)
             }
         }
     }

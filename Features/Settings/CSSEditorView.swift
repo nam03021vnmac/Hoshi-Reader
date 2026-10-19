@@ -14,7 +14,11 @@ struct CSSEditorView: View {
     let fontManager = FontManager.shared
     @Binding var text: String
     @FocusState private var isFocused: Bool
+    #if os(macOS)
+    @State private var textView: NSTextView?
+    #else
     @State private var textView: UITextView?
+    #endif
     
     var body: some View {
         VStack(spacing: 0) {
@@ -24,11 +28,19 @@ struct CSSEditorView: View {
                 .autocorrectionDisabled()
                 .textInputAutocapitalization(.never)
                 .focused($isFocused)
+                #if os(macOS)
+                .introspect(.textEditor, on: .macOS(.v15, .v26)) { nsTextView in
+                    nsTextView.isAutomaticQuoteSubstitutionEnabled = false
+                    nsTextView.isAutomaticDashSubstitutionEnabled = false
+                    textView = nsTextView
+                }
+                #else
                 .introspect(.textEditor, on: .iOS(.v18, .v26)) { uiTextView in
                     uiTextView.smartQuotesType = .no
                     uiTextView.smartDashesType = .no
                     textView = uiTextView
                 }
+                #endif
         }
     }
     
@@ -107,7 +119,12 @@ struct CSSEditorView: View {
             return
         }
         
+        #if os(macOS)
+        textView.insertText(insertedText, replacementRange: textView.selectedRange())
+        text = textView.string
+        #else
         textView.insertText(insertedText)
         text = textView.text
+        #endif
     }
 }

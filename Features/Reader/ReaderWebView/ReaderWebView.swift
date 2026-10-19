@@ -8,7 +8,9 @@
 
 import WebKit
 import SwiftUI
+#if os(iOS)
 import UIKit
+#endif
 
 enum NavigationDirection {
     case forward
@@ -75,6 +77,7 @@ class WebViewBridge {
     }
 }
 
+#if os(iOS)
 final class HoshiWKWebView: WKWebView {
     var onHighlightCreated: ((HighlightColor, HighlightData) -> Void)?
     var onHighlightUpdated: ((HighlightColor, UUID) -> Void)?
@@ -1005,3 +1008,4 @@ struct ReaderWebView: UIViewRepresentable {
         }
     }
 }
+#endif

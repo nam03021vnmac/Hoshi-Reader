@@ -9,7 +9,6 @@
 import CryptoKit
 import Foundation
 import Synchronization
-import UIKit
 
 nonisolated enum OCRModelPack: String, CaseIterable, Codable, Identifiable, Sendable {
     case v6Small = "ppocrv6-small"
@@ -135,7 +134,7 @@ final class OCRModelStore {
     private init() {
         Self.removeRetiredPacks()
         refresh()
-        NotificationCenter.default.addObserver(forName: UIApplication.didReceiveMemoryWarningNotification, object: nil, queue: .main) { [weak self] _ in
+        NotificationCenter.default.addObserver(forName: Platform.didReceiveMemoryWarningNotification, object: nil, queue: .main) { [weak self] _ in
             MainActor.assumeIsolated {
                 self?.releaseEngineSessions()
             }

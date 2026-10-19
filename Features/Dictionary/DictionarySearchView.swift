@@ -71,7 +71,7 @@ struct DictionarySearchView: View {
     var shouldFocus: Bool = false
     
     private var usesTopTabBarLayout: Bool {
-        UIDevice.current.userInterfaceIdiom == .pad && horizontalSizeClass == .regular
+        Platform.isLargeDevice && horizontalSizeClass == .regular
     }
     
     private var tabBarInset: CGFloat {
@@ -178,7 +178,7 @@ struct DictionarySearchView: View {
                         isVertical: popup.isVertical,
                         isFullWidth: popup.isFullWidth,
                         topInset: topHeight,
-                        bottomInset: max(UIApplication.bottomSafeArea, 30) + tabBarInset,
+                        bottomInset: max(Platform.bottomSafeArea, 30) + tabBarInset,
                         coverURL: nil,
                         documentTitle: nil,
                         clearSelection: popup.clearSelection,
@@ -241,6 +241,7 @@ struct DictionarySearchView: View {
                     }
             }
         }
+        #if os(iOS)
         .onReceive(NotificationCenter.default.publisher(for: UITextField.textDidBeginEditingNotification)) { notification in
             guard let field = notification.object as? UISearchTextField else { return }
             field.setPreferredInputLanguage("ja")
@@ -248,6 +249,7 @@ struct DictionarySearchView: View {
                 field.selectAll(nil)
             }
         }
+        #endif
         .onChange(of: shouldFocus) {
             searchFocused = true
         }

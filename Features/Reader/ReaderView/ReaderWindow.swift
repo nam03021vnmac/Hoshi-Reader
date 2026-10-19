@@ -19,6 +19,7 @@ extension EnvironmentValues {
     }
 }
 
+#if os(iOS)
 @MainActor
 final class ReaderWindow {
     private weak var hostController: UIViewController?
@@ -64,3 +65,4 @@ final class ReaderWindow {
         return top
     }
 }
+#endif

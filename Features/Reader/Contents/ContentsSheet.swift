@@ -87,10 +87,12 @@ struct ContentsSheet: View {
             .task(id: searchQuery) {
                 await search()
             }
+            #if os(iOS)
             .onReceive(NotificationCenter.default.publisher(for: UITextField.textDidBeginEditingNotification)) { notification in
                 guard let field = notification.object as? UISearchTextField else { return }
                 field.setPreferredInputLanguage("ja")
             }
+            #endif
             .navigationTitle(viewModel.book.displayTitle)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {

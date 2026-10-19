@@ -8,8 +8,11 @@
 
 import WebKit
 import SwiftUI
+#if os(iOS)
 import UIKit
+#endif
 
+#if os(iOS)
 struct ScrollReaderWebView: UIViewRepresentable {
     let userConfig: UserConfig
     let viewportWidth: Int
@@ -837,3 +840,4 @@ struct ScrollReaderWebView: UIViewRepresentable {
         }
     }
 }
+#endif

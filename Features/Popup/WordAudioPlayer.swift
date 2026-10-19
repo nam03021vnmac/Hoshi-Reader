@@ -37,6 +37,7 @@ actor WordAudioPlayer {
         }
         
         stopPlayer()
+        #if os(iOS)
         let session = AVAudioSession.sharedInstance()
         
         do {
@@ -47,6 +48,7 @@ actor WordAudioPlayer {
         } catch {
             return
         }
+        #endif
         
         let item = AVPlayerItem(url: url)
         let player = AVPlayer(playerItem: item)
@@ -80,9 +82,11 @@ actor WordAudioPlayer {
     
     private func cleanupPlayback() {
         stopPlayer()
+        #if os(iOS)
         if !otherAudioActive {
             try? AVAudioSession.sharedInstance().setActive(false, options: [.notifyOthersOnDeactivation])
         }
+        #endif
     }
     
     private func stopPlayer() {
@@ -101,6 +105,7 @@ actor WordAudioPlayer {
         }
     }
     
+    #if os(iOS)
     private func categoryOptions(for mode: AudioPlaybackMode) -> AVAudioSession.CategoryOptions {
         switch mode {
         case .interrupt:
@@ -111,4 +116,5 @@ actor WordAudioPlayer {
             return [.mixWithOthers]
         }
     }
+    #endif
 }

@@ -7,12 +7,15 @@
 //
 
 import SwiftUI
-import UIKit
 import WebKit
 
 @main
 struct HoshiReaderApp: App {
+    #if os(macOS)
+    @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
+    #else
     @UIApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
+    #endif
     @Environment(\.scenePhase) private var scenePhase
     @State private var userConfig = UserConfig.shared
     @State private var pendingImportURL: URL?
@@ -87,6 +90,11 @@ struct HoshiReaderApp: App {
                 shortcutHandler.pendingType = nil
             }
         }
+        #if os(macOS)
+        .commands {
+            MacCommands()
+        }
+        #endif
     }
     
     private func handleURL(_ url: URL) {
@@ -117,31 +125,6 @@ struct HoshiReaderApp: App {
 class ShortcutHandler {
     static let shared = ShortcutHandler()
     var pendingType: String?
-    func handle(_ shortcutItem: UIApplicationShortcutItem) {
-        pendingType = shortcutItem.type
-    }
-}
-
-class AppDelegate: NSObject, UIApplicationDelegate {
-    func application(_ application: UIApplication,
-                     configurationForConnecting connectingSceneSession: UISceneSession,
-                     options: UIScene.ConnectionOptions) -> UISceneConfiguration {
-        let config = UISceneConfiguration(name: nil, sessionRole: connectingSceneSession.role)
-        config.delegateClass = ShortcutSceneDelegate.self
-        return config
-    }
-}
-
-class ShortcutSceneDelegate: NSObject, UIWindowSceneDelegate {
-    func scene(_ scene: UIScene, willConnectTo session: UISceneSession, options connectionOptions: UIScene.ConnectionOptions) {
-        if let shortcutItem = connectionOptions.shortcutItem {
-            ShortcutHandler.shared.handle(shortcutItem)
-        }
-    }
-    func windowScene(_ windowScene: UIWindowScene, performActionFor shortcutItem: UIApplicationShortcutItem, completionHandler: @escaping (Bool) -> Void) {
-        ShortcutHandler.shared.handle(shortcutItem)
-        completionHandler(true)
-    }
 }
 
 class WebViewPreloader {

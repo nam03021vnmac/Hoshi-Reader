@@ -10,7 +10,6 @@
 import Foundation
 import Network
 import SQLite3
-import UIKit
 
 @MainActor
 class LocalFileServer {
@@ -21,7 +20,7 @@ class LocalFileServer {
     static let localAudioURL = "http://localhost:\(port)/localaudio/get/?term={term}&reading={reading}"
     
     private var listener: NWListener?
-    private var backgroundTask: UIBackgroundTaskIdentifier = .invalid
+    private var backgroundTask: Platform.BackgroundTaskID = .invalid
     private var coverData: Data?
     private var sasayakiAudioData: Data?
     private var localAudioEnabled = false
@@ -107,7 +106,7 @@ class LocalFileServer {
         guard listener != nil, backgroundTask == .invalid else {
             return
         }
-        backgroundTask = UIApplication.shared.beginBackgroundTask {
+        backgroundTask = Platform.beginBackgroundTask {
             self.listener?.cancel()
             self.listener = nil
             self.endBackgroundTask()
@@ -118,7 +117,7 @@ class LocalFileServer {
         guard backgroundTask != .invalid else {
             return
         }
-        UIApplication.shared.endBackgroundTask(backgroundTask)
+        Platform.endBackgroundTask(backgroundTask)
         backgroundTask = .invalid
     }
     

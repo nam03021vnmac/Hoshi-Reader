@@ -7,8 +7,11 @@
 //
 
 import PDFKit
+#if os(iOS)
 import UIKit
+#endif
 
+#if os(iOS)
 final class PDFHighlightOverlayView: UIView {
     weak var pdfView: PDFView?
     weak var page: PDFPage?
@@ -81,6 +84,7 @@ final class PDFHighlightOverlayView: UIView {
         return path.cgPath
     }
 }
+#endif
 
 struct PDFTextBoxes {
     let main: [CGRect]
@@ -92,6 +96,7 @@ struct PDFTextBoxes {
     }
 }
 
+#if os(iOS)
 final class PDFHighlightOverlayProvider: NSObject, PDFPageOverlayViewProvider {
     weak var pdfView: PDFView?
     private var overlays: [Int: PDFHighlightOverlayView] = [:]
@@ -154,3 +159,4 @@ final class PDFHighlightOverlayProvider: NSObject, PDFPageOverlayViewProvider {
         overlays.values.forEach { $0.setNeedsLayout() }
     }
 }
+#endif

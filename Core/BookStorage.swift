@@ -33,12 +33,16 @@ struct BookStorage {
     }
     
     nonisolated private static let appDirectory: URL? = {
-        guard let url = FileManager.default.urls(
+        guard var url = FileManager.default.urls(
             for: .applicationSupportDirectory,
             in: .userDomainMask
         ).first else {
             return nil
         }
+        #if os(macOS)
+        // outside the sandbox (e.g. unsigned debug builds) Application Support is shared by all apps
+        url.append(path: Bundle.main.bundleIdentifier ?? "Hoshi Reader", directoryHint: .isDirectory)
+        #endif
         if !FileManager.default.fileExists(atPath: url.path(percentEncoded: false)) {
             try? FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)
         }
@@ -53,6 +57,10 @@ struct BookStorage {
     }
     
     nonisolated static func migrateFromDocuments() {
+        #if os(macOS)
+        // the Documents layout predates the Mac app, so there is nothing to move
+        UserDefaults.standard.set(true, forKey: Self.migratedDocumentsKey)
+        #else
         guard let appSupport = try? getAppDirectory(),
               let documents = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first else { return }
         
@@ -69,6 +77,7 @@ struct BookStorage {
         }
         
         UserDefaults.standard.set(true, forKey: Self.migratedDocumentsKey)
+        #endif
     }
     
     nonisolated static func migrateBooks() {

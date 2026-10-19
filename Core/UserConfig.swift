@@ -673,7 +673,7 @@ class UserConfig {
     }
     
     private static func saveColor(_ color: Color, key: String) {
-        let uiColor = UIColor(color)
+        let uiColor = PlatformColor(color)
         let colorData = try? NSKeyedArchiver.archivedData(withRootObject: uiColor, requiringSecureCoding: false)
         UserDefaults.standard.set(colorData, forKey: key)
     }
@@ -682,8 +682,8 @@ class UserConfig {
         guard let colorData = UserDefaults.standard.data(forKey: key) else {
             return nil
         }
-        if let uiColor = try? NSKeyedUnarchiver.unarchivedObject(ofClass: UIColor.self, from: colorData) {
-            return Color(uiColor)
+        if let uiColor = try? NSKeyedUnarchiver.unarchivedObject(ofClass: PlatformColor.self, from: colorData) {
+            return Color(platformColor: uiColor)
         }
         return nil
     }

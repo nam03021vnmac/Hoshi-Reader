@@ -14,7 +14,7 @@
 		48BC0BDF2F5C316B00EDAC3F /* CHoshiDicts in Frameworks */ = {isa = PBXBuildFile; productRef = 48BC0BDE2F5C316B00EDAC3F /* CHoshiDicts */; };
 		48C8125F2F5F47C000127630 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 48C8125E2F5F47C000127630 /* PrivacyInfo.xcprivacy */; };
 		48F0AF182FF5750F004B75F8 /* SwiftLAME in Frameworks */ = {isa = PBXBuildFile; productRef = 48F0AF172FF5750F004B75F8 /* SwiftLAME */; };
-		48FE8D502F76AB88002C2C49 /* ShareExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 48FE8D462F76AB88002C2C49 /* ShareExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		48FE8D502F76AB88002C2C49 /* ShareExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 48FE8D462F76AB88002C2C49 /* ShareExtension.appex */; platformFilter = ios; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		90F2F2662FBCA7C000FEABB6 /* Dictionaries.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = 90F2F2642FBCA7C000FEABB6 /* Dictionaries.xcstrings */; };
 		90F2F2672FBCA7C000FEABB6 /* Localizable.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = 90F2F2652FBCA7C000FEABB6 /* Localizable.xcstrings */; };
 		ABFC92CD98C379AE0FE51CB2 /* onnxruntime in Frameworks */ = {isa = PBXBuildFile; productRef = C8957CAAA517123D4F2257F6 /* onnxruntime */; };
@@ -59,6 +59,9 @@
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
 				HoshiReader.swift,
+				"iOS/AppDelegate+iOS.swift",
+				"macOS/AppDelegate+macOS.swift",
+				macOS/MacCommands.swift,
 			);
 			target = 48107AB62F114021009E12D1 /* Hoshi Reader */;
 		};
@@ -160,6 +163,11 @@
 			path = ShareExtension;
 			sourceTree = "<group>";
 		};
+		A11CE0012FC0000100D1A001 /* Platform */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = Platform;
+			sourceTree = "<group>";
+		};
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -193,6 +201,7 @@
 				48568A622F1E926300F9C126 /* App */,
 				48568A662F1E926300F9C126 /* Core */,
 				48568A792F1E926300F9C126 /* Features */,
+				A11CE0012FC0000100D1A001 /* Platform */,
 				48568A7B2F1E926300F9C126 /* Models */,
 				48568A7D2F1E926300F9C126 /* Util */,
 				48568A462F1E7F5C00F9C126 /* Assets.xcassets */,
@@ -231,6 +240,7 @@
 			);
 			fileSystemSynchronizedGroups = (
 				48568A792F1E926300F9C126 /* Features */,
+				A11CE0012FC0000100D1A001 /* Platform */,
 			);
 			name = "Hoshi Reader";
 			packageProductDependencies = (
@@ -354,6 +364,7 @@
 /* Begin PBXTargetDependency section */
 		48FE8D4F2F76AB88002C2C49 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
+			platformFilter = ios;
 			target = 48FE8D452F76AB88002C2C49 /* ShareExtension */;
 			targetProxy = 48FE8D4E2F76AB88002C2C49 /* PBXContainerItemProxy */;
 		};
@@ -498,6 +509,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = HoshiIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = NO;
+				"CODE_SIGN_ENTITLEMENTS[sdk=macosx*]" = "App/macOS/HoshiReader-macOS.entitlements";
 				CODE_SIGN_STYLE = Automatic;
 				DEVELOPMENT_TEAM = GPLBDQ2MBT;
 				ENABLE_PREVIEWS = YES;
@@ -519,10 +531,20 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
+				"LD_RUNPATH_SEARCH_PATHS[sdk=macosx*]" = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
 				LIBRARY_SEARCH_PATHS = "$(inherited)";
+				MACOSX_DEPLOYMENT_TARGET = 15.0;
 				PRODUCT_BUNDLE_IDENTIFIER = de.manhhao.hoshi;
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = auto;
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
 				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
 				SWIFT_EMIT_LOC_STRINGS = YES;
@@ -539,6 +561,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = HoshiIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = NO;
+				"CODE_SIGN_ENTITLEMENTS[sdk=macosx*]" = "App/macOS/HoshiReader-macOS.entitlements";
 				CODE_SIGN_STYLE = Automatic;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
@@ -559,10 +582,20 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
+				"LD_RUNPATH_SEARCH_PATHS[sdk=macosx*]" = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
 				LIBRARY_SEARCH_PATHS = "$(inherited)";
+				MACOSX_DEPLOYMENT_TARGET = 15.0;
 				PRODUCT_BUNDLE_IDENTIFIER = de.manhhao.hoshi;
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = auto;
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
 				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
 				SWIFT_EMIT_LOC_STRINGS = YES;

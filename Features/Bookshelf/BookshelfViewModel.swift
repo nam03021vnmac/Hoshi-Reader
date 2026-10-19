@@ -417,6 +417,8 @@ class BookshelfViewModel {
     }
     
     func clearInbox() {
+        // Documents/Inbox is where iOS drops files handed over by other apps
+        #if os(iOS)
         guard let documentsDirectory = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first else {
             return
         }
@@ -433,6 +435,7 @@ class BookshelfViewModel {
         for item in inboxContents {
             try? FileManager.default.removeItem(at: item)
         }
+        #endif
     }
     
     func runSasayakiMatch(book: BookMetadata, srtURL: URL, searchWindow: Int) async throws -> SasayakiMatchData {

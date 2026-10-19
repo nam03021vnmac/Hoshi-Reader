@@ -110,7 +110,7 @@ struct ReaderView: View {
         if userConfig.theme == .sepia || (userConfig.theme == .system && userConfig.systemLightSepia && systemColorScheme == .light) {
             return "#332A1B"
         }
-        return userConfig.theme == .custom ? UIColor(userConfig.customTextColor).hexString : nil
+        return userConfig.theme == .custom ? PlatformColor(userConfig.customTextColor).hexString : nil
     }
     
     private var readerTheme: ColorScheme {
@@ -133,21 +133,21 @@ struct ReaderView: View {
     
     private func updateSasayakiColors() {
         viewModel.bridge.send(.updateSasayakiColors(
-            textHex: UIColor(sasayakiTextColor).hexString,
-            backgroundHex: UIColor(sasayakiBackgroundColor).hexString
+            textHex: PlatformColor(sasayakiTextColor).hexString,
+            backgroundHex: PlatformColor(sasayakiBackgroundColor).hexString
         ))
     }
     
     private func flushAutoSyncInBackground() {
-        var task: UIBackgroundTaskIdentifier = .invalid
-        task = UIApplication.shared.beginBackgroundTask {
-            UIApplication.shared.endBackgroundTask(task)
+        var task: Platform.BackgroundTaskID = .invalid
+        task = Platform.beginBackgroundTask {
+            Platform.endBackgroundTask(task)
             task = .invalid
         }
         
         Task {
             await viewModel.flushAutoSync()
-            UIApplication.shared.endBackgroundTask(task)
+            Platform.endBackgroundTask(task)
             task = .invalid
         }
     }
@@ -208,8 +208,8 @@ struct ReaderView: View {
             statsSyncMode: statsSyncMode,
             syncAudioBook: syncAudioBook
         ))
-        _topSafeArea = State(initialValue: UIDevice.current.userInterfaceIdiom == .pad ? 35 : UIApplication.topSafeArea)
-        _bottomSafeArea = State(initialValue: UIDevice.current.userInterfaceIdiom == .pad ? 20 : UIApplication.bottomSafeArea)
+        _topSafeArea = State(initialValue: Platform.isLargeDevice ? 35 : Platform.topSafeArea)
+        _bottomSafeArea = State(initialValue: Platform.isLargeDevice ? 20 : Platform.bottomSafeArea)
     }
     
     private var progressString: String {
@@ -776,7 +776,7 @@ struct ReaderView: View {
         .onChange(of: sasayakiTextColor) { _, _ in updateSasayakiColors() }
         .onChange(of: sasayakiBackgroundColor) { _, _ in updateSasayakiColors() }
         .onChange(of: userConfig.sasayakiAutoScroll) { _, _ in viewModel.sasayakiPlayer.updateIdleTimerDisabled() }
-        .onReceive(NotificationCenter.default.publisher(for: UIApplication.didBecomeActiveNotification)) { _ in
+        .onReceive(NotificationCenter.default.publisher(for: Platform.didBecomeActiveNotification)) { _ in
             let shouldResync = inactiveSince.map { Date.now.timeIntervalSince($0) >= 600 } ?? false
             inactiveSince = nil
             if shouldResync {
@@ -790,7 +790,7 @@ struct ReaderView: View {
             viewModel.resetTrackingBaseline()
             viewModel.isPaused = false
         }
-        .onReceive(NotificationCenter.default.publisher(for: UIApplication.willResignActiveNotification)) { _ in
+        .onReceive(NotificationCenter.default.publisher(for: Platform.willResignActiveNotification)) { _ in
             inactiveSince = .now
             flushAutoSyncInBackground()
             guard viewModel.isTracking else {

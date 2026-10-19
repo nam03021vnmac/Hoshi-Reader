@@ -109,7 +109,9 @@ class SasayakiPlayer {
     var resumeAfterInterruption = false
     var hasPlayedOnce = false
     var player: AVPlayer?
+    #if os(iOS)
     var nowPlayingSession: MPNowPlayingSession?
+    #endif
     var timeObserver: Any?
     var endObserver: NSObjectProtocol?
     var interruptionObserver: NSObjectProtocol?
@@ -191,7 +193,7 @@ class SasayakiPlayer {
     }
     
     func updateIdleTimerDisabled() {
-        UIApplication.shared.isIdleTimerDisabled = isPlaying && autoScroll
+        Platform.isIdleTimerDisabled = isPlaying && autoScroll
     }
     
     func nextCue() {
@@ -321,6 +323,7 @@ class SasayakiPlayer {
         artwork = nil
         
         clearDisplayedCue()
+        #if os(iOS)
         if let center = nowPlayingSession?.remoteCommandCenter {
             center.playCommand.removeTarget(nil)
             center.pauseCommand.removeTarget(nil)
@@ -335,6 +338,7 @@ class SasayakiPlayer {
         Task.detached {
             try? AVAudioSession.sharedInstance().setActive(false, options: [.notifyOthersOnDeactivation])
         }
+        #endif
         
         if let url = audioURL {
             url.stopAccessingSecurityScopedResource()
@@ -393,9 +397,11 @@ class SasayakiPlayer {
     private func startPlayback() {
         guard let player else { return }
         setupNowPlayingSession()
+        #if os(iOS)
         let session = AVAudioSession.sharedInstance()
         try? session.setCategory(.playback, mode: .spokenAudio)
         try? session.setActive(true)
+        #endif
         player.play()
         isPlaying = true
         hasPlayedOnce = true
@@ -484,6 +490,7 @@ class SasayakiPlayer {
             }
         }
         
+        #if os(iOS)
         interruptionObserver = NotificationCenter.default.addObserver(
             forName: AVAudioSession.interruptionNotification, object: nil, queue: .main
         ) { [weak self] notification in
@@ -496,11 +503,13 @@ class SasayakiPlayer {
                 self?.handleInterruption(type, options: options)
             }
         }
+        #endif
         
         setupArtwork(from: item.asset)
     }
     
     private func setupNowPlayingSession() {
+        #if os(iOS)
         guard let player, nowPlayingSession == nil else { return }
         let item = player.currentItem
         player.replaceCurrentItem(with: nil)
@@ -509,6 +518,7 @@ class SasayakiPlayer {
         configureRemoteCommandCenter(nowPlayingSession!.remoteCommandCenter)
         player.replaceCurrentItem(with: item)
         nowPlayingSession?.becomeActiveIfPossible()
+        #endif
     }
     
     func restoreAudio() {
@@ -642,6 +652,7 @@ class SasayakiPlayer {
         })
     }
     
+    #if os(iOS)
     private func handleInterruption(_ type: AVAudioSession.InterruptionType, options: UInt) {
         switch type {
         case .began:
@@ -662,6 +673,7 @@ class SasayakiPlayer {
             break
         }
     }
+    #endif
     
     private func configureRemoteCommandCenter(_ center: MPRemoteCommandCenter) {
         center.playCommand.addTarget { [weak self] _ in
@@ -721,10 +733,10 @@ class SasayakiPlayer {
             let artworkData = try? await artworkItem?.load(.dataValue)
             
             let image =
-            artworkData.flatMap(UIImage.init(data:)) ??
+            artworkData.flatMap(PlatformImage.init(data:)) ??
             bookMetadata?.coverURL
                 .flatMap { try? Data(contentsOf: $0) }
-                .flatMap(UIImage.init(data:))
+                .flatMap(PlatformImage.init(data:))
             
             guard let image else { return }
             
@@ -747,10 +759,14 @@ class SasayakiPlayer {
             info[MPMediaItemPropertyArtwork] = artwork
         }
         
+        #if os(macOS)
+        MPNowPlayingInfoCenter.default().nowPlayingInfo = info
+        #else
         item.nowPlayingInfo = info
+        #endif
     }
     
-    private static nonisolated func makeArtwork(from image: UIImage) -> MPMediaItemArtwork {
+    private static nonisolated func makeArtwork(from image: PlatformImage) -> MPMediaItemArtwork {
         MPMediaItemArtwork(boundsSize: image.size) { _ in image }
     }
 }

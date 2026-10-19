@@ -356,7 +356,7 @@ struct PopupView: View {
     }
     
     var body: some View {
-        if #available(iOS 26, *), !userConfig.popupDisableTransparency {
+        if #available(iOS 26, macOS 26, *), !userConfig.popupDisableTransparency {
             GlassEffectContainer {
                 if isVisible, let selectionData, let layout, !content.isEmpty {
                     popupContent(selectionData: selectionData, layout: layout)

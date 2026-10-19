@@ -7,7 +7,9 @@
 //
 
 import SwiftUI
+#if os(iOS)
 import UIKit
+#endif
 import WebKit
 
 class AudioHandler: NSObject, WKURLSchemeHandler {
@@ -146,6 +148,7 @@ class DocumentResourceHandler: NSObject, WKURLSchemeHandler {
     }
 }
 
+#if os(iOS)
 struct PopupWebView: UIViewRepresentable {
     let content: String
     let position: CGPoint
@@ -565,3 +568,4 @@ struct PopupWebView: UIViewRepresentable {
         """
     }
 }
+#endif

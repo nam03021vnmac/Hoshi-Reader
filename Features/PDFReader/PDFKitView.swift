@@ -14,6 +14,7 @@ struct PDFKitViewState: Hashable {
     var rightToLeft: Bool
 }
 
+#if os(iOS)
 /// PDFKit centers pages inside the safe area, so hiding the status bar with the reader controls moved the page.
 /// The reader is full screen and the controls float on top, so the safe area is ignored.
 final class ReaderPDFView: PDFView {
@@ -335,3 +336,4 @@ struct PDFKitView: UIViewRepresentable {
         }
     }
 }
+#endif
