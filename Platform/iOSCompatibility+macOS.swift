@@ -99,6 +99,7 @@ extension NSColor {
     static var systemGray4: NSColor { .systemGray.withAlphaComponent(0.5) }
     static var systemGray5: NSColor { .systemGray.withAlphaComponent(0.25) }
     static var tertiaryLabel: NSColor { .tertiaryLabelColor }
+    static var tintColor: NSColor { .controlAccentColor }
 }
 
 extension NSView {
@@ -106,6 +107,11 @@ extension NSView {
     var alpha: CGFloat {
         get { alphaValue }
         set { alphaValue = newValue }
+    }
+
+    /// UIKit's name for `needsLayout = true`.
+    func setNeedsLayout() {
+        needsLayout = true
     }
 }
 

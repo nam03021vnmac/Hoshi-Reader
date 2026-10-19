@@ -176,18 +176,7 @@ extension ReaderWebView.Coordinator {
 @MainActor
 private final class PagedReaderInput: ReaderInputHandling {
     private weak var coordinator: ReaderWebView.Coordinator?
-    /// How far a trackpad swipe moves before it turns the page.
-    private let swipeThreshold: CGFloat = 30
-    /// A mouse wheel turns one page per burst of events. With smooth scrolling, a single
-    /// click arrives as a stream of small deltas, so a burst ends after a pause, or after
-    /// `wheelRepeatInterval` while the wheel keeps spinning.
-    private let wheelPause: TimeInterval = 0.15
-    private let wheelRepeatInterval: TimeInterval = 0.5
-    private var swipeDelta: CGSize = .zero
-    private var swipeHandled = false
-    private var lastWheelEvent: TimeInterval = 0
-    private var lastWheelTurn: TimeInterval = 0
-    private var wheelBurstTurned = false
+    private let pageTurner = ScrollPageTurner()
 
     init(coordinator: ReaderWebView.Coordinator) {
         self.coordinator = coordinator
@@ -221,39 +210,11 @@ private final class PagedReaderInput: ReaderInputHandling {
 
     func scrollWheel(with event: NSEvent) -> Bool {
         // the page never scrolls, so WebKit gets no wheel events at all
-        guard let coordinator, event.momentumPhase.isEmpty else {
+        guard let coordinator,
+              let delta = pageTurner.pageTurnDelta(for: event),
+              let direction = direction(for: delta, in: coordinator) else {
             return true
         }
-
-        if event.phase.isEmpty {
-            // a mouse wheel
-            let now = ProcessInfo.processInfo.systemUptime
-            if now - lastWheelEvent > wheelPause {
-                wheelBurstTurned = false
-            }
-            lastWheelEvent = now
-            guard !wheelBurstTurned || now - lastWheelTurn > wheelRepeatInterval,
-                  let direction = direction(for: CGSize(width: event.scrollingDeltaX, height: event.scrollingDeltaY), in: coordinator) else {
-                return true
-            }
-            wheelBurstTurned = true
-            lastWheelTurn = now
-            coordinator.navigate(direction)
-            return true
-        }
-
-        if event.phase.contains(.began) {
-            swipeDelta = .zero
-            swipeHandled = false
-        }
-        swipeDelta.width += event.scrollingDeltaX
-        swipeDelta.height += event.scrollingDeltaY
-        guard !swipeHandled,
-              max(abs(swipeDelta.width), abs(swipeDelta.height)) >= swipeThreshold,
-              let direction = direction(for: swipeDelta, in: coordinator) else {
-            return true
-        }
-        swipeHandled = true
         coordinator.navigate(direction)
         return true
     }

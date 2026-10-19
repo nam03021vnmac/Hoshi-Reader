@@ -381,12 +381,13 @@ struct PDFReaderView: View {
             switch sheet {
             case .contents:
                 PDFContentsSheet(viewModel: viewModel, readerTheme: readerTheme)
+                    .sheetFrame(minHeight: 600)
             case .settings:
                 NavigationStack {
                     PDFSettingsView()
                         .navigationBarTitleDisplayMode(.inline)
                         .toolbar {
-                            ToolbarItem(placement: .topBarTrailing) {
+                            ToolbarItem(placement: .sheetDismiss) {
                                 Button {
                                     viewModel.activeSheet = nil
                                 } label: {
@@ -396,15 +397,18 @@ struct PDFReaderView: View {
                         }
                 }
                 .presentationDetents([.large])
+                .sheetFrame(minHeight: 600)
                 .preferredColorScheme(readerTheme)
             case .statistics:
                 PDFStatisticsSheet(viewModel: viewModel)
+                    .sheetFrame()
                     .preferredColorScheme(readerTheme)
             case .ocrModel:
                 PDFOCRModelPrompt(pack: viewModel.ocrPack) {
                     viewModel.activeSheet = nil
                 }
                 .presentationDetents([.medium])
+                .sheetFrame(minHeight: 360)
                 .preferredColorScheme(readerTheme)
             }
         }
@@ -440,6 +444,12 @@ struct PDFReaderView: View {
                 viewModel.isPaused = false
             } else {
                 viewModel.isPaused = true
+            }
+        }
+        .onEscapeKey {
+            if !viewModel.popups.isEmpty {
+                viewModel.clearSelection()
+                viewModel.closePopups()
             }
         }
         .onChange(of: userConfig.pdfOCRMode) {

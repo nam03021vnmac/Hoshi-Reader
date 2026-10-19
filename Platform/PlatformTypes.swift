@@ -13,11 +13,13 @@ import AppKit
 
 typealias PlatformImage = NSImage
 typealias PlatformColor = NSColor
+typealias PlatformView = NSView
 #else
 import UIKit
 
 typealias PlatformImage = UIImage
 typealias PlatformColor = UIColor
+typealias PlatformView = UIView
 #endif
 
 extension Image {
