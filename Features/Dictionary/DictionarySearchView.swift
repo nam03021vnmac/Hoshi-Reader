@@ -144,6 +144,7 @@ struct DictionarySearchView: View {
                     }
                 )
                 .id(lastQuery)
+                #if os(iOS)
                 .simultaneousGesture(
                     DragGesture(minimumDistance: 30)
                         .onEnded { value in
@@ -153,18 +154,13 @@ struct DictionarySearchView: View {
                             guard abs(dx) > abs(dy) && abs(dy) < 20 else { return }
                             
                             if dx > 0 {
-                                guard backCount > 0 else { return }
-                                backTrigger.toggle()
-                                backCount -= 1
-                                forwardCount += 1
+                                navigateBack()
                             } else {
-                                guard forwardCount > 0 else { return }
-                                forwardTrigger.toggle()
-                                forwardCount -= 1
-                                backCount += 1
+                                navigateForward()
                             }
                         }
                 )
+                #endif
                 
                 ForEach($popups) { $popup in
                     let popupId = popup.id
@@ -211,7 +207,9 @@ struct DictionarySearchView: View {
                 }
             }
         }
+        #if os(iOS)
         .ignoresSafeArea()
+        #endif
         .safeAreaInset(edge: .top) {
             if let scrollViewInitialContentOffset {
                 SearchResetInset(
@@ -233,6 +231,7 @@ struct DictionarySearchView: View {
             searchFocused = false
             runLookup()
         }
+        #if os(iOS)
         .background {
             GeometryReader { proxy in
                 Color.clear
@@ -241,7 +240,6 @@ struct DictionarySearchView: View {
                     }
             }
         }
-        #if os(iOS)
         .onReceive(NotificationCenter.default.publisher(for: UITextField.textDidBeginEditingNotification)) { notification in
             guard let field = notification.object as? UISearchTextField else { return }
             field.setPreferredInputLanguage("ja")
@@ -249,6 +247,24 @@ struct DictionarySearchView: View {
                 field.selectAll(nil)
             }
         }
+        #else
+        // macOS has no swipe between lookups, and the results sit below the toolbar instead of under it
+        .toolbar {
+            ToolbarItemGroup(placement: .navigation) {
+                Button(action: navigateBack) {
+                    Label("Back", systemImage: "chevron.left")
+                }
+                .disabled(backCount == 0)
+                .keyboardShortcut("[", modifiers: .command)
+                
+                Button(action: navigateForward) {
+                    Label("Forward", systemImage: "chevron.right")
+                }
+                .disabled(forwardCount == 0)
+                .keyboardShortcut("]", modifiers: .command)
+            }
+        }
+        .onExitCommand(perform: closePopups)
         #endif
         .onChange(of: shouldFocus) {
             searchFocused = true
@@ -276,6 +292,20 @@ struct DictionarySearchView: View {
                 searchFocused = true
             }
         }
+    }
+    
+    private func navigateBack() {
+        guard backCount > 0 else { return }
+        backTrigger.toggle()
+        backCount -= 1
+        forwardCount += 1
+    }
+    
+    private func navigateForward() {
+        guard forwardCount > 0 else { return }
+        forwardTrigger.toggle()
+        forwardCount -= 1
+        backCount += 1
     }
     
     private func runLookup() {

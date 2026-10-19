@@ -84,6 +84,14 @@ class AnkiManager {
     private init() {
         load()
         loadWords()
+        #if os(macOS)
+        // AnkiMobile's x-callback URLs only exist on iOS, so the Mac always talks to desktop Anki through AnkiConnect
+        useAnkiConnect = true
+        if ankiConnectConfig?.url?.isEmpty ?? true {
+            ankiConnectConfig = ankiConnectConfig ?? AnkiConnectConfig(url: nil, timeout: 10, duplicateScope: .collection, forceSync: false)
+            ankiConnectConfig?.url = "http://127.0.0.1:8765"
+        }
+        #endif
         if ankiConnectConfig?.url != nil {
             Task { await pingAnkiConnect() }
         }

@@ -7,9 +7,6 @@
 //
 
 import SwiftUI
-#if os(iOS)
-import UIKit
-#endif
 import WebKit
 
 class AudioHandler: NSObject, WKURLSchemeHandler {
@@ -148,8 +145,46 @@ class DocumentResourceHandler: NSObject, WKURLSchemeHandler {
     }
 }
 
-#if os(iOS)
-struct PopupWebView: UIViewRepresentable {
+/// One of the native buttons that popup.js reserves space for with a `.button-slot` span.
+struct PopupButtonSlot {
+    let kind: String
+    let entryIndex: Int
+    let slotIndex: Int
+    let frame: CGRect
+    let state: String
+    let isEnabled: Bool
+
+    var key: String {
+        "\(kind)-\(entryIndex)-\(slotIndex)"
+    }
+
+    init?(_ rect: [String: Any]) {
+        guard let kind = rect["kind"] as? String,
+              let entryIndex = rect["entryIndex"] as? Int,
+              let x = rect["x"] as? CGFloat,
+              let y = rect["y"] as? CGFloat,
+              let width = rect["width"] as? CGFloat,
+              let height = rect["height"] as? CGFloat,
+              width > 0, height > 0 else {
+            return nil
+        }
+
+        let slotIndex = rect["slotIndex"] as? Int ?? 0
+        if kind != "audio", !AnkiManager.shared.cardFormats.indices.contains(slotIndex) {
+            return nil
+        }
+        self.kind = kind
+        self.entryIndex = entryIndex
+        self.slotIndex = slotIndex
+        self.frame = CGRect(x: x, y: y, width: width, height: height)
+        self.state = rect["state"] as? String ?? "default"
+        self.isEnabled = rect["enabled"] as? Bool ?? true
+    }
+}
+
+/// The popup's WKWebView. The platform glue (UIViewRepresentable / NSViewRepresentable and
+/// the native buttons over each `.button-slot`) lives in PopupWebView+iOS.swift and PopupWebView+macOS.swift.
+struct PopupWebView {
     let content: String
     let position: CGPoint
     var scale: CGFloat = 1.0
@@ -171,7 +206,7 @@ struct PopupWebView: UIViewRepresentable {
     var onScrollViewWillBeginDragging: (() -> Void)? = nil
     var onScrollViewDidEndDragging: (() -> Void)? = nil
     var onScrollViewDidEndDecelerating: (() -> Void)? = nil
-    
+
     private static let swipeDismissJs = """
     (function() {
         if (!window.swipeThreshold) {
@@ -186,76 +221,65 @@ struct PopupWebView: UIViewRepresentable {
             var dx = e.changedTouches[0].clientX - startX;
             var dy = e.changedTouches[0].clientY - startY;
             var hasSelection = window.getSelection().toString();
-            
+
             if (Math.abs(dx) > window.swipeThreshold && Math.abs(dy) < 30 && !hasSelection) {
                 webkit.messageHandlers.swipeDismiss.postMessage(null);
             }
         });
     })();
     """
-    
+
     func makeCoordinator() -> Coordinator {
         Coordinator(parent: self)
     }
-    
-    func makeUIView(context: Context) -> WKWebView {
+
+    func makeConfiguration(coordinator: Coordinator) -> WKWebViewConfiguration {
         let config = WKWebViewConfiguration()
-        config.userContentController.add(context.coordinator, name: "openLink")
-        config.userContentController.add(context.coordinator, name: "textSelected")
-        config.userContentController.add(context.coordinator, name: "tapOutside")
-        config.userContentController.add(context.coordinator, name: "swipeDismiss")
-        config.userContentController.add(context.coordinator, name: "playWordAudio")
-        config.userContentController.add(context.coordinator, name: "buttonRects")
-        config.userContentController.add(context.coordinator, name: "showNotes")
-        config.userContentController.addScriptMessageHandler(context.coordinator, contentWorld: .page, name: "mineEntry")
-        config.userContentController.addScriptMessageHandler(context.coordinator, contentWorld: .page, name: "duplicateCheck")
-        config.userContentController.addScriptMessageHandler(context.coordinator, contentWorld: .page, name: "getEntries")
-        config.userContentController.addScriptMessageHandler(context.coordinator, contentWorld: .page, name: "lookupRedirect")
-        config.userContentController.addScriptMessageHandler(context.coordinator, contentWorld: .page, name: "kanjiRedirect")
+        config.userContentController.add(coordinator, name: "openLink")
+        config.userContentController.add(coordinator, name: "textSelected")
+        config.userContentController.add(coordinator, name: "tapOutside")
+        config.userContentController.add(coordinator, name: "swipeDismiss")
+        config.userContentController.add(coordinator, name: "playWordAudio")
+        config.userContentController.add(coordinator, name: "buttonRects")
+        config.userContentController.add(coordinator, name: "showNotes")
+        config.userContentController.addScriptMessageHandler(coordinator, contentWorld: .page, name: "mineEntry")
+        config.userContentController.addScriptMessageHandler(coordinator, contentWorld: .page, name: "duplicateCheck")
+        config.userContentController.addScriptMessageHandler(coordinator, contentWorld: .page, name: "getEntries")
+        config.userContentController.addScriptMessageHandler(coordinator, contentWorld: .page, name: "lookupRedirect")
+        config.userContentController.addScriptMessageHandler(coordinator, contentWorld: .page, name: "kanjiRedirect")
         config.setURLSchemeHandler(AudioHandler(), forURLScheme: "audio")
         config.setURLSchemeHandler(ImageHandler(), forURLScheme: "image")
         config.setURLSchemeHandler(DocumentResourceHandler(), forURLScheme: "local-resources")
         config.mediaTypesRequiringUserActionForPlayback = []
-        
-        let webView = WKWebView(frame: .zero, configuration: config)
-        webView.isOpaque = false
-        webView.backgroundColor = .clear
-        webView.scrollView.isScrollEnabled = true
-        webView.scrollView.bounces = scrollViewBounces
-        webView.scrollView.keyboardDismissMode = .onDrag
-        webView.scrollView.showsHorizontalScrollIndicator = false
-        webView.scrollView.delegate = context.coordinator
-        webView.navigationDelegate = context.coordinator
-        context.coordinator.webView = webView
-        return webView
+        return config
     }
-    
-    func updateUIView(_ webView: WKWebView, context: Context) {
-        context.coordinator.parent = self
-        if !context.coordinator.wasLoaded {
-            context.coordinator.currentContent = content
-            context.coordinator.wasLoaded = true
+
+    func updateWebView(_ webView: WKWebView, coordinator: Coordinator) {
+        coordinator.parent = self
+        if !coordinator.wasLoaded {
+            coordinator.currentContent = content
+            coordinator.wasLoaded = true
             let html = constructHtml(content: content)
             webView.loadHTMLString(html, baseURL: Bundle.main.resourceURL)
         }
-        
-        if context.coordinator.clearSelection != clearSelection {
-            context.coordinator.clearSelection = clearSelection
+
+        if coordinator.clearSelection != clearSelection {
+            coordinator.clearSelection = clearSelection
             webView.evaluateJavaScript("window.hoshiSelection.clearSelection()")
         }
-        
-        if context.coordinator.lastBackTrigger != backTrigger {
-            context.coordinator.lastBackTrigger = backTrigger
+
+        if coordinator.lastBackTrigger != backTrigger {
+            coordinator.lastBackTrigger = backTrigger
             webView.evaluateJavaScript("window.navigateBack()")
         }
-        
-        if context.coordinator.lastForwardTrigger != forwardTrigger {
-            context.coordinator.lastForwardTrigger = forwardTrigger
+
+        if coordinator.lastForwardTrigger != forwardTrigger {
+            coordinator.lastForwardTrigger = forwardTrigger
             webView.evaluateJavaScript("window.navigateForward()")
         }
     }
-    
-    static func dismantleUIView(_ webView: WKWebView, coordinator: Coordinator) {
+
+    static func dismantleWebView(_ webView: WKWebView, coordinator: Coordinator) {
         coordinator.removeWordAddedObserver()
         Task {
             await WordAudioPlayer.shared.stop(id: coordinator.id)
@@ -273,8 +297,8 @@ struct PopupWebView: UIViewRepresentable {
         webView.configuration.userContentController.removeScriptMessageHandler(forName: "lookupRedirect", contentWorld: .page)
         webView.configuration.userContentController.removeScriptMessageHandler(forName: "kanjiRedirect", contentWorld: .page)
     }
-    
-    class Coordinator: NSObject, WKScriptMessageHandler, WKScriptMessageHandlerWithReply, WKNavigationDelegate, UIScrollViewDelegate {
+
+    class Coordinator: NSObject, WKScriptMessageHandler, WKScriptMessageHandlerWithReply, WKNavigationDelegate {
         var parent: PopupWebView
         var currentContent: String = ""
         var wasLoaded: Bool = false
@@ -283,11 +307,10 @@ struct PopupWebView: UIViewRepresentable {
         var lastForwardTrigger: Bool = false
         var entries: [[String: Any]] = []
         weak var webView: WKWebView?
-        private var buttons: [String: UIButton] = [:]
-        private var buttonActions: [UIButton: (kind: String, entryIndex: Int, slotIndex: Int)] = [:]
+        lazy var buttons = PopupButtons(coordinator: self)
         private var wordAddedObserver: NSObjectProtocol?
         let id = UUID()
-        
+
         init(parent: PopupWebView) {
             self.parent = parent
             super.init()
@@ -301,91 +324,35 @@ struct PopupWebView: UIViewRepresentable {
                 }
             }
         }
-        
+
         func removeWordAddedObserver() {
             if let wordAddedObserver {
                 NotificationCenter.default.removeObserver(wordAddedObserver)
                 self.wordAddedObserver = nil
             }
         }
-        
-        private func updateButtons(_ rects: [[String: Any]], in webView: WKWebView) {
-            var activeKeys = Set<String>()
-            let symbolConfig = UIImage.SymbolConfiguration(pointSize: 13 * parent.scale, weight: .medium)
-            
-            for rect in rects {
-                guard let kind = rect["kind"] as? String,
-                      let entryIndex = rect["entryIndex"] as? Int,
-                      let x = rect["x"] as? CGFloat,
-                      let y = rect["y"] as? CGFloat,
-                      let width = rect["width"] as? CGFloat,
-                      let height = rect["height"] as? CGFloat,
-                      width > 0, height > 0 else {
-                    continue
-                }
-                
-                let slotIndex = rect["slotIndex"] as? Int ?? 0
-                if kind != "audio", !AnkiManager.shared.cardFormats.indices.contains(slotIndex) {
-                    continue
-                }
-                let key = "\(kind)-\(entryIndex)-\(slotIndex)"
-                activeKeys.insert(key)
-                
-                let button: UIButton
-                if let existing = buttons[key] {
-                    button = existing
-                } else {
-                    button = UIButton(type: .system)
-                    button.addTarget(self, action: #selector(buttonTapped(_:)), for: .touchUpInside)
-                    button.tintColor = .secondaryLabel
-                    if kind == "audio" {
-                        button.showsMenuAsPrimaryAction = false
-                        button.menu = UIMenu(children: [UIDeferredMenuElement.uncached { [weak self] completion in
-                            Task { @MainActor in
-                                completion(await self?.audioMenuElements(entryIndex: entryIndex) ?? [])
-                            }
-                        }])
-                    }
-                    buttons[key] = button
-                    webView.scrollView.addSubview(button)
-                }
-                
-                buttonActions[button] = (kind, entryIndex, slotIndex)
-                button.frame = CGRect(x: x, y: y, width: width, height: height)
-                let state = rect["state"] as? String ?? "default"
-                button.setImage(symbolImage(kind: kind, state: state, slotIndex: slotIndex, config: symbolConfig), for: .normal)
-                button.isEnabled = rect["enabled"] as? Bool ?? true
-                button.alpha = button.isEnabled ? (kind == "note" ? 0.58 : 0.85) : 0.55
+
+        /// The SF Symbol drawn on a slot's button, and the point size to draw it at.
+        func symbol(for slot: PopupButtonSlot) -> (name: String, pointSize: CGFloat)? {
+            let pointSize = 13 * parent.scale
+            if slot.kind == "audio" {
+                return (slot.state == "error" ? "speaker.slash" : "speaker.wave.2", pointSize)
             }
-            
-            for key in buttons.keys.filter({ !activeKeys.contains($0) }) {
-                if let button = buttons.removeValue(forKey: key) {
-                    buttonActions.removeValue(forKey: button)
-                    button.removeFromSuperview()
-                }
+            if slot.kind == "note" {
+                return ("magnifyingglass", 9 * parent.scale)
             }
-        }
-        
-        private func symbolImage(kind: String, state: String, slotIndex: Int, config: UIImage.SymbolConfiguration) -> UIImage? {
-            if kind == "audio" {
-                return UIImage(systemName: state == "error" ? "speaker.slash" : "speaker.wave.2", withConfiguration: config)
-            }
-            if kind == "note" {
-                let noteConfig = UIImage.SymbolConfiguration(pointSize: 9 * parent.scale, weight: .medium)
-                return UIImage(systemName: "magnifyingglass", withConfiguration: noteConfig)
-            }
-            guard AnkiManager.shared.cardFormats.indices.contains(slotIndex) else { return nil }
-            var icon = AnkiManager.shared.cardFormats[slotIndex].icon
+            guard AnkiManager.shared.cardFormats.indices.contains(slot.slotIndex) else { return nil }
+            var icon = AnkiManager.shared.cardFormats[slot.slotIndex].icon
             let isSmall = icon.hasSuffix(".small")
             if isSmall {
                 icon = String(icon.dropLast(".small".count))
             }
-            let name = state == "duplicate" ? (AnkiCardFormat.duplicateIcons[icon] ?? icon) : icon
-            let iconConfig = isSmall ? UIImage.SymbolConfiguration(pointSize: 10 * parent.scale, weight: .medium) : config
-            return UIImage(systemName: name, withConfiguration: iconConfig)
+            let name = slot.state == "duplicate" ? (AnkiCardFormat.duplicateIcons[icon] ?? icon) : icon
+            return (name, isSmall ? 10 * parent.scale : pointSize)
         }
-        
-        private func audioMenuElements(entryIndex: Int) async -> [UIMenuElement] {
+
+        /// The audio sources for an entry, and the index of the one that is selected (-1 if none).
+        func audioMenu(entryIndex: Int) async -> (names: [String], selected: Int) {
             let result = try? await webView?.callAsyncJavaScript(
                 "return await getAudioMenu(entryIndex);",
                 arguments: ["entryIndex": entryIndex],
@@ -393,50 +360,24 @@ struct PopupWebView: UIViewRepresentable {
                 contentWorld: .page
             )
             let menu = result as? [String: Any]
-            let names = menu?["names"] as? [String] ?? []
-            let selected = menu?["selected"] as? Int ?? -1
-            
-            guard !names.isEmpty else {
-                return [UIAction(title: String(localized: "No audio found"), attributes: .disabled) { _ in }]
-            }
-            
-            return names.enumerated().map { index, name in
-                UIAction(title: name, state: index == selected ? .on : .off) { [weak self] _ in
-                    self?.webView?.evaluateJavaScript("playEntryAudio(\(entryIndex), \(index))")
-                }
-            }
+            return (menu?["names"] as? [String] ?? [], menu?["selected"] as? Int ?? -1)
         }
-        
-        @objc private func buttonTapped(_ sender: UIButton) {
-            guard let action = buttonActions[sender] else { return }
-            switch action.kind {
+
+        func playAudio(entryIndex: Int, sourceIndex: Int) {
+            webView?.evaluateJavaScript("playEntryAudio(\(entryIndex), \(sourceIndex))")
+        }
+
+        func buttonTapped(kind: String, entryIndex: Int, slotIndex: Int) {
+            switch kind {
             case "audio":
-                webView?.evaluateJavaScript("playEntryAudio(\(action.entryIndex))")
+                webView?.evaluateJavaScript("playEntryAudio(\(entryIndex))")
             case "note":
-                webView?.evaluateJavaScript("showNotesAtIndex(\(action.entryIndex), \(action.slotIndex))")
+                webView?.evaluateJavaScript("showNotesAtIndex(\(entryIndex), \(slotIndex))")
             default:
-                webView?.evaluateJavaScript("mineEntryAtIndex(\(action.entryIndex), \(action.slotIndex))")
+                webView?.evaluateJavaScript("mineEntryAtIndex(\(entryIndex), \(slotIndex))")
             }
         }
-        
-        func scrollViewDidScroll(_ scrollView: UIScrollView) {
-            parent.onScrollViewOffsetChanged?(scrollView.contentOffset.y + scrollView.adjustedContentInset.top)
-            guard scrollView.contentOffset.x != 0 else { return }
-            scrollView.contentOffset.x = 0
-        }
-        
-        func scrollViewWillBeginDragging(_ scrollView: UIScrollView) {
-            parent.onScrollViewWillBeginDragging?()
-        }
-        
-        func scrollViewDidEndDragging(_ scrollView: UIScrollView, willDecelerate decelerate: Bool) {
-            parent.onScrollViewDidEndDragging?()
-        }
-        
-        func scrollViewDidEndDecelerating(_ scrollView: UIScrollView) {
-            parent.onScrollViewDidEndDecelerating?()
-        }
-        
+
         func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
             entries = parent.lookupEntries
             webView.callAsyncJavaScript(
@@ -454,7 +395,7 @@ struct PopupWebView: UIViewRepresentable {
                 completionHandler: nil
             )
         }
-        
+
         func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) async -> (Any?, String?) {
             if message.name == "mineEntry", let content = message.body as? [String: String] {
                 guard let slotIndex = content["slotIndex"].flatMap(Int.init),
@@ -480,11 +421,11 @@ struct PopupWebView: UIViewRepresentable {
             }
             return (nil, nil)
         }
-        
+
         func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
             if message.name == "openLink", let urlString = message.body as? String,
                let url = URL(string: urlString) {
-                UIApplication.shared.open(url)
+                Platform.open(url)
             }
             else if message.name == "tapOutside" {
                 parent.onTapOutside?()
@@ -496,7 +437,7 @@ struct PopupWebView: UIViewRepresentable {
             else if message.name == "buttonRects",
                     let rects = message.body as? [[String: Any]] {
                 guard let webView = message.webView else { return }
-                updateButtons(rects, in: webView)
+                buttons.update(rects.compactMap(PopupButtonSlot.init), in: webView)
             }
             else if message.name == "showNotes", let fields = message.body as? [String: String],
                     let slotIndex = fields["slotIndex"].flatMap(Int.init) {
@@ -513,16 +454,16 @@ struct PopupWebView: UIViewRepresentable {
                       let h = rectData["height"] as? CGFloat else {
                     return
                 }
-                let adjustedInset = message.webView?.scrollView.adjustedContentInset ?? .zero
+                let contentOrigin = message.webView.map(contentOrigin(of:)) ?? .zero
                 let rect = CGRect(
-                    x: parent.position.x + x + adjustedInset.left,
-                    y: parent.position.y + y + adjustedInset.top,
+                    x: parent.position.x + x + contentOrigin.x,
+                    y: parent.position.y + y + contentOrigin.y,
                     width: w,
                     height: h
                 )
                 let clozeOffset = body["clozeOffset"] as? Int
                 let selectionData = SelectionData(text: text, sentence: sentence, rect: rect, clozeOffset: clozeOffset)
-                
+
                 if let highlightCount = parent.onTextSelected?(selectionData) {
                     message.webView?.evaluateJavaScript("window.hoshiSelection.highlightSelection(\(highlightCount))")
                 }
@@ -537,7 +478,7 @@ struct PopupWebView: UIViewRepresentable {
             }
         }
     }
-    
+
     private func constructHtml(content: String) -> String {
         """
         <!DOCTYPE html>
@@ -568,4 +509,3 @@ struct PopupWebView: UIViewRepresentable {
         """
     }
 }
-#endif

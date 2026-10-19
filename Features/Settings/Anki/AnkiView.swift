@@ -33,6 +33,13 @@ struct AnkiView: View {
                         Text("Fetch decks and models from Anki", tableName: "Dictionaries")
                     }
                 }
+                #if os(macOS)
+                NavigationLink {
+                    AnkiConnectView()
+                } label: {
+                    Text("AnkiConnect", tableName: "Dictionaries")
+                }
+                #endif
                 if !ankiManager.useAnkiConnect && ankiManager.isConnected {
                     Button {
                         isImporting = true
@@ -43,7 +50,11 @@ struct AnkiView: View {
             } footer: {
                 VStack(alignment: .leading, spacing: 4) {
                     if !ankiManager.isConnected {
+                        #if os(macOS)
+                        Text("Anki with the AnkiConnect add-on must be running to mine words.", tableName: "Dictionaries")
+                        #else
                         Text("AnkiMobile or an AnkiConnect instance is required to mine words.", tableName: "Dictionaries")
+                        #endif
                     }
                     if ankiManager.useAnkiConnect {
                         Text("AnkiConnect Status: \(ankiConnectReachabilityStatus)", tableName: "Dictionaries")

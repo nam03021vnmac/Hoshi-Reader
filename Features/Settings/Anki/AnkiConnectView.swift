@@ -14,6 +14,7 @@ struct AnkiConnectView: View {
     
     var body: some View {
         List {
+            #if os(iOS)
             Section {
                 Toggle(isOn: $ankiManager.useAnkiConnect) {
                     Text("Use AnkiConnect", tableName: "Dictionaries")
@@ -22,6 +23,7 @@ struct AnkiConnectView: View {
             } footer: {
                 Text("This will replace AnkiMobile callbacks with AnkiConnect requests.", tableName: "Dictionaries")
             }
+            #endif
             if ankiManager.useAnkiConnect {
                 Section {
                     VStack(alignment: .leading, spacing: 3) {
