@@ -101,6 +101,14 @@ extension NSColor {
     static var tertiaryLabel: NSColor { .tertiaryLabelColor }
 }
 
+extension NSView {
+    /// UIKit's name for `alphaValue`, so shared code can hide and fade in web views.
+    var alpha: CGFloat {
+        get { alphaValue }
+        set { alphaValue = newValue }
+    }
+}
+
 extension Color {
     init(uiColor: NSColor) {
         self.init(nsColor: uiColor)

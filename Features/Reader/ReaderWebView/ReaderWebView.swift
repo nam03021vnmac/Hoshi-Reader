@@ -8,9 +8,6 @@
 
 import WebKit
 import SwiftUI
-#if os(iOS)
-import UIKit
-#endif
 
 enum NavigationDirection {
     case forward
@@ -77,34 +74,10 @@ class WebViewBridge {
     }
 }
 
-#if os(iOS)
-final class HoshiWKWebView: WKWebView {
-    var onHighlightCreated: ((HighlightColor, HighlightData) -> Void)?
-    var onHighlightUpdated: ((HighlightColor, UUID) -> Void)?
-    var hasSelection: Bool = false
-    
-    // https://stackoverflow.com/a/78488754
-    override func buildMenu(with builder: UIMenuBuilder) {
-        super.buildMenu(with: builder)
-        guard hasSelection else { return }
-        let children = HighlightColor.allCases.map { color in
-            let swatch = UIImage(systemName: "circle.fill")?.withTintColor(UIColor(color.swatch), renderingMode: .alwaysOriginal)
-            return UIAction(title: color.rawValue.capitalized, image: swatch) { [weak self] _ in
-                self?.createHighlight(color: color)
-            }
-        }
-        let menu = UIMenu(
-            title: "Highlight",
-            image: UIImage(systemName: "highlighter"),
-            options: [.displayAsPalette],
-            preferredElementSize: .medium,
-            children: children
-        )
-        builder.remove(menu: .learn)
-        builder.insertSibling(menu, beforeMenu: .standardEdit)
-    }
-    
-    private func createHighlight(color: HighlightColor) {
+/// The reader's WKWebView subclass is defined per platform in ReaderWebView+iOS.swift and
+/// ReaderWebView+macOS.swift, since the highlight menu is a UIMenu on iOS and an NSMenu on macOS.
+extension HoshiWKWebView {
+    func createHighlight(color: HighlightColor) {
         let id = UUID()
         let script = "window.hoshiHighlights.createHighlight('\(color.rawValue)', '\(id.uuidString)')"
         evaluateJavaScript(script) { [weak self] result, _ in
@@ -130,7 +103,9 @@ final class HoshiWKWebView: WKWebView {
     }
 }
 
-struct ReaderWebView: UIViewRepresentable {
+/// The paginated reader. The platform glue (UIViewRepresentable / NSViewRepresentable, input
+/// handling and the highlight menu) lives in ReaderWebView+iOS.swift and ReaderWebView+macOS.swift.
+struct ReaderWebView {
     let userConfig: UserConfig
     let viewSize: CGSize
     let bridge: WebViewBridge
@@ -159,90 +134,60 @@ struct ReaderWebView: UIViewRepresentable {
         Coordinator(self)
     }
     
-    func makeUIView(context: Context) -> WKWebView {
+    func makeConfiguration(coordinator: Coordinator) -> WKWebViewConfiguration {
         let config = WKWebViewConfiguration()
-        config.userContentController.add(context.coordinator, name: "textSelected")
-        config.userContentController.add(context.coordinator, name: "restoreCompleted")
-        config.userContentController.add(context.coordinator, name: "selectionState")
-        config.userContentController.add(context.coordinator, name: "imageTapped")
-        config.defaultWebpagePreferences.preferredContentMode = .mobile
-        
-        let webView = HoshiWKWebView(frame: .zero, configuration: config)
-        webView.isOpaque = false
-        webView.backgroundColor = .clear
-        webView.scrollView.backgroundColor = .clear
-        if UIDevice.current.userInterfaceIdiom == .pad {
-            webView.scrollView.contentInsetAdjustmentBehavior = .never
-        }
-        webView.scrollView.isScrollEnabled = false
-        webView.navigationDelegate = context.coordinator
-        
-        let coordinator = context.coordinator
+        config.userContentController.add(coordinator, name: "textSelected")
+        config.userContentController.add(coordinator, name: "restoreCompleted")
+        config.userContentController.add(coordinator, name: "selectionState")
+        config.userContentController.add(coordinator, name: "imageTapped")
+        return config
+    }
+
+    /// Wires up a newly created web view and hides it until the first chapter restores.
+    func prepare(_ webView: HoshiWKWebView, coordinator: Coordinator) {
+        webView.navigationDelegate = coordinator
+
         webView.onHighlightCreated = { [weak coordinator] color, creation in
             coordinator?.parent.onHighlightCreated(color, creation)
         }
         webView.onHighlightUpdated = { [weak coordinator] color, id in
             coordinator?.parent.onHighlightUpdated(color, id)
         }
-        
-        let swipeLeft = UISwipeGestureRecognizer(target: context.coordinator, action: #selector(Coordinator.handleSwipeLeft(_:)))
-        swipeLeft.direction = .left
-        swipeLeft.delegate = context.coordinator
-        swipeLeft.cancelsTouchesInView = false
-        swipeLeft.delaysTouchesEnded = false
-        webView.addGestureRecognizer(swipeLeft)
-        
-        let swipeRight = UISwipeGestureRecognizer(target: context.coordinator, action: #selector(Coordinator.handleSwipeRight(_:)))
-        swipeRight.direction = .right
-        swipeRight.delegate = context.coordinator
-        swipeRight.cancelsTouchesInView = false
-        swipeRight.delaysTouchesEnded = false
-        webView.addGestureRecognizer(swipeRight)
-        
-        let tap = UITapGestureRecognizer(target: context.coordinator, action: #selector(Coordinator.handleTap(_:)))
-        tap.delegate = context.coordinator
-        tap.require(toFail: swipeLeft)
-        tap.require(toFail: swipeRight)
-        tap.cancelsTouchesInView = false
-        tap.delaysTouchesEnded = false
-        webView.addGestureRecognizer(tap)
-        
-        context.coordinator.webView = webView
-        
+
+        coordinator.webView = webView
+
         webView.alpha = 0
-        
+
         WebViewPreloader.shared.close()
-        
-        return webView
     }
-    
-    func updateUIView(_ webView: WKWebView, context: Context) {
-        context.coordinator.parent = self
-        
+
+    func updateWebView(_ webView: WKWebView, coordinator: Coordinator) {
+        coordinator.parent = self
+
         if !bridge.pendingCommands.isEmpty {
             let commands = bridge.pendingCommands
             bridge.pendingCommands.removeAll()
             for command in commands {
                 switch command {
                 case .loadChapter(let url, let progress, let fragment, let sasayakiCues, let highlights):
-                    context.coordinator.currentURL = url
-                    context.coordinator.pendingProgress = progress
-                    context.coordinator.pendingFragment = fragment
-                    context.coordinator.pendingSasayakiCues = sasayakiCues
-                    context.coordinator.pendingHighlights = highlights
+                    coordinator.currentURL = url
+                    coordinator.pendingProgress = progress
+                    coordinator.pendingFragment = fragment
+                    coordinator.pendingSasayakiCues = sasayakiCues
+                    coordinator.pendingHighlights = highlights
                     if let appDirectory = try? BookStorage.getAppDirectory() {
                         webView.alpha = 0
                         webView.loadFileURL(url, allowingReadAccessTo: appDirectory)
                     }
                 case .restoreProgress(let progress):
-                    context.coordinator.pendingProgress = progress
-                    context.coordinator.pendingFragment = nil
-                    context.coordinator.shouldSyncProgressAfterRestore = false
+                    coordinator.pendingProgress = progress
+                    coordinator.pendingFragment = nil
+                    coordinator.shouldSyncProgressAfterRestore = false
                     webView.evaluateJavaScript("window.hoshiReader.restoreProgress(\(progress))") { _, _ in }
                 case .jumpToFragment(let fragment):
-                    context.coordinator.jumpToFragment(fragment)
+                    coordinator.jumpToFragment(fragment)
                 case .clearSelection:
-                    context.coordinator.clearSelection()
+                    coordinator.clearSelection()
                 case .updateTextColor(let hex):
                     if let hex {
                         webView.evaluateJavaScript("document.documentElement.style.setProperty('--hoshi-text-color', '\(hex)')") { _, _ in }
@@ -258,7 +203,7 @@ struct ReaderWebView: UIViewRepresentable {
                     webView.evaluateJavaScript("window.hoshiReader.applySasayakiCues(\(cues))") { _, _ in completion?() }
                 case .highlightSasayakiCue(let id, let reveal):
                     let revealFlag = reveal ? "true" : "false"
-                    let cue = context.coordinator.javaScriptStringLiteral(id)
+                    let cue = coordinator.javaScriptStringLiteral(id)
                     webView.evaluateJavaScript("window.hoshiReader.highlightSasayakiCue(\(cue), \(revealFlag))") { result, _ in
                         if let progress = result as? Double {
                             onPageTurn()
@@ -278,7 +223,7 @@ struct ReaderWebView: UIViewRepresentable {
                         completion?(body != nil)
                     }
                 case .removeHighlight(let id):
-                    let literal = context.coordinator.javaScriptStringLiteral(id)
+                    let literal = coordinator.javaScriptStringLiteral(id)
                     webView.evaluateJavaScript("window.hoshiHighlights.removeHighlight(\(literal))") { _, _ in }
                 case .showSearchHighlight(let offset, let length):
                     webView.evaluateJavaScript("window.hoshiHighlights.showSearchHighlight(\(offset), \(length))") { _, _ in }
@@ -287,26 +232,26 @@ struct ReaderWebView: UIViewRepresentable {
             return
         }
         
-        if context.coordinator.currentURL == nil, let url = bridge.chapterURL {
-            context.coordinator.currentURL = url
-            context.coordinator.pendingProgress = bridge.progress
-            context.coordinator.pendingFragment = nil
-            context.coordinator.pendingSasayakiCues = bridge.sasayakiCues
-            context.coordinator.pendingHighlights = bridge.highlights
+        if coordinator.currentURL == nil, let url = bridge.chapterURL {
+            coordinator.currentURL = url
+            coordinator.pendingProgress = bridge.progress
+            coordinator.pendingFragment = nil
+            coordinator.pendingSasayakiCues = bridge.sasayakiCues
+            coordinator.pendingHighlights = bridge.highlights
             guard let appDirectory = try? BookStorage.getAppDirectory() else { return }
             webView.alpha = 0
             webView.loadFileURL(url, allowingReadAccessTo: appDirectory)
         }
     }
     
-    static func dismantleUIView(_ webView: WKWebView, coordinator: Coordinator) {
+    static func dismantleWebView(_ webView: WKWebView, coordinator: Coordinator) {
         webView.configuration.userContentController.removeScriptMessageHandler(forName: "textSelected")
         webView.configuration.userContentController.removeScriptMessageHandler(forName: "restoreCompleted")
         webView.configuration.userContentController.removeScriptMessageHandler(forName: "selectionState")
         webView.configuration.userContentController.removeScriptMessageHandler(forName: "imageTapped")
     }
     
-    class Coordinator: NSObject, WKNavigationDelegate, UIGestureRecognizerDelegate, WKScriptMessageHandler {
+    class Coordinator: NSObject, WKNavigationDelegate, WKScriptMessageHandler {
         var parent: ReaderWebView
         weak var webView: WKWebView?
         var currentURL: URL?
@@ -339,7 +284,7 @@ struct ReaderWebView: UIViewRepresentable {
                     shouldSyncProgressAfterRestore = false
                     syncLinkJumpProgress()
                 }
-                UIView.animate(withDuration: 0.25) {
+                Platform.animate(withDuration: 0.25) {
                     message.webView?.alpha = 1
                 }
                 parent.onRestoreCompleted()
@@ -355,9 +300,9 @@ struct ReaderWebView: UIViewRepresentable {
                       let h = rectData["height"] as? CGFloat else {
                     return
                 }
-                let scrollBounds = message.webView?.scrollView.bounds ?? .zero
+                let scrollOrigin = scrollOrigin(of: message.webView)
                 let rect = CGRect(x: x, y: y, width: w, height: h)
-                    .offsetBy(dx: 0, dy: -scrollBounds.origin.y)
+                    .offsetBy(dx: 0, dy: -scrollOrigin.y)
                 let normalizedOffset = body["normalizedOffset"] as? Int
                 let clozeOffset = body["clozeOffset"] as? Int
                 let selectionData = SelectionData(text: text, sentence: sentence, rect: rect, normalizedOffset: normalizedOffset, clozeOffset: clozeOffset)
@@ -514,8 +459,8 @@ struct ReaderWebView: UIViewRepresentable {
             let css = """
             \(fontFaceCss)
             :root {
-                --hoshi-sasayaki-text-color: \(UIColor(parent.sasayakiTextColor).hexString);
-                --hoshi-sasayaki-background-color: \(UIColor(parent.sasayakiBackgroundColor).hexString);
+                --hoshi-sasayaki-text-color: \(PlatformColor(parent.sasayakiTextColor).hexString);
+                --hoshi-sasayaki-background-color: \(PlatformColor(parent.sasayakiBackgroundColor).hexString);
             }
             html, body {
                 overflow: hidden !important;
@@ -814,7 +759,7 @@ struct ReaderWebView: UIViewRepresentable {
             webView.loadFileURL(currentURL, allowingReadAccessTo: appDirectory)
         }
         
-        private func navigate(_ direction: NavigationDirection) {
+        func navigate(_ direction: NavigationDirection) {
             guard let webView = webView else { return }
             
             clearSelection()
@@ -846,15 +791,7 @@ struct ReaderWebView: UIViewRepresentable {
             """
         }
         
-        @objc func handleSwipeLeft(_ gesture: UISwipeGestureRecognizer) {
-            navigate(parent.userConfig.verticalWriting ? .backward : .forward)
-        }
-        
-        @objc func handleSwipeRight(_ gesture: UISwipeGestureRecognizer) {
-            navigate(parent.userConfig.verticalWriting ? .forward : .backward)
-        }
-        
-        @objc func handleTap(_ gesture: UITapGestureRecognizer) {
+        func handleTap(at point: CGPoint) {
             guard let webView = webView else {
                 return
             }
@@ -863,7 +800,6 @@ struct ReaderWebView: UIViewRepresentable {
                 return
             }
             
-            let point = gesture.location(in: webView)
             guard parent.doubleTapSeekEnabled else {
                 selectText(at: point)
                 return
@@ -889,7 +825,7 @@ struct ReaderWebView: UIViewRepresentable {
             }
         }
         
-        private func hitTestText(at point: CGPoint, completion: @escaping (Int?) -> Void) {
+        func hitTestText(at point: CGPoint, completion: @escaping (Int?) -> Void) {
             guard let webView = webView else {
                 completion(nil)
                 return
@@ -900,7 +836,7 @@ struct ReaderWebView: UIViewRepresentable {
             }
         }
         
-        private func selectText(at point: CGPoint) {
+        func selectText(at point: CGPoint) {
             guard let webView = webView else {
                 return
             }
@@ -972,7 +908,7 @@ struct ReaderWebView: UIViewRepresentable {
                 return false
             }
             if scheme == "http" || scheme == "https" {
-                UIApplication.shared.open(url)
+                Platform.open(url)
                 return true
             }
             return false
@@ -999,13 +935,5 @@ struct ReaderWebView: UIViewRepresentable {
             }
             webView.evaluateJavaScript("window.hoshiHighlights.clearSearchHighlight()") { _, _ in }
         }
-        
-        func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer, shouldRecognizeSimultaneouslyWith otherGestureRecognizer: UIGestureRecognizer) -> Bool {
-            if otherGestureRecognizer is UILongPressGestureRecognizer {
-                return false
-            }
-            return true
-        }
     }
 }
-#endif

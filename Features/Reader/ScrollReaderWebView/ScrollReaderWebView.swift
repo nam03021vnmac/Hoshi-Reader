@@ -8,12 +8,10 @@
 
 import WebKit
 import SwiftUI
-#if os(iOS)
-import UIKit
-#endif
 
-#if os(iOS)
-struct ScrollReaderWebView: UIViewRepresentable {
+/// The continuous-scroll reader. The platform glue (UIViewRepresentable / NSViewRepresentable
+/// and scroll tracking) lives in ScrollReaderWebView+iOS.swift and ScrollReaderWebView+macOS.swift.
+struct ScrollReaderWebView {
     let userConfig: UserConfig
     let viewportWidth: Int
     let bridge: WebViewBridge
@@ -43,13 +41,12 @@ struct ScrollReaderWebView: UIViewRepresentable {
         Coordinator(self)
     }
     
-    func makeUIView(context: Context) -> WKWebView {
+    func makeConfiguration(coordinator: Coordinator) -> WKWebViewConfiguration {
         let config = WKWebViewConfiguration()
-        config.userContentController.add(context.coordinator, name: "textSelected")
-        config.userContentController.add(context.coordinator, name: "restoreCompleted")
-        config.userContentController.add(context.coordinator, name: "selectionState")
-        config.userContentController.add(context.coordinator, name: "imageTapped")
-        config.defaultWebpagePreferences.preferredContentMode = .mobile
+        config.userContentController.add(coordinator, name: "textSelected")
+        config.userContentController.add(coordinator, name: "restoreCompleted")
+        config.userContentController.add(coordinator, name: "selectionState")
+        config.userContentController.add(coordinator, name: "imageTapped")
         
         let viewportScript = """
         (function() {
@@ -63,23 +60,13 @@ struct ScrollReaderWebView: UIViewRepresentable {
         })();
         """
         config.userContentController.addUserScript(WKUserScript(source: viewportScript, injectionTime: .atDocumentEnd, forMainFrameOnly: true))
+        return config
+    }
+    
+    /// Wires up a newly created web view and hides it until the first chapter restores.
+    func prepare(_ webView: HoshiWKWebView, coordinator: Coordinator) {
+        webView.navigationDelegate = coordinator
         
-        let webView = HoshiWKWebView(frame: .zero, configuration: config)
-        webView.isOpaque = false
-        webView.backgroundColor = .clear
-        webView.scrollView.backgroundColor = .clear
-        if UIDevice.current.userInterfaceIdiom == .pad {
-            webView.scrollView.contentInsetAdjustmentBehavior = .never
-        }
-        webView.scrollView.delegate = context.coordinator
-        webView.scrollView.alwaysBounceVertical = !userConfig.verticalWriting
-        webView.scrollView.alwaysBounceHorizontal = userConfig.verticalWriting
-        webView.scrollView.showsVerticalScrollIndicator = false
-        webView.scrollView.showsHorizontalScrollIndicator = false
-        webView.scrollView.scrollsToTop = false
-        webView.navigationDelegate = context.coordinator
-        
-        let coordinator = context.coordinator
         webView.onHighlightCreated = { [weak coordinator] color, creation in
             coordinator?.parent.onHighlightCreated(color, creation)
         }
@@ -87,23 +74,15 @@ struct ScrollReaderWebView: UIViewRepresentable {
             coordinator?.parent.onHighlightUpdated(color, id)
         }
         
-        let tap = UITapGestureRecognizer(target: context.coordinator, action: #selector(Coordinator.handleTap(_:)))
-        tap.delegate = context.coordinator
-        tap.cancelsTouchesInView = false
-        tap.delaysTouchesEnded = false
-        webView.addGestureRecognizer(tap)
-        
-        context.coordinator.webView = webView
+        coordinator.webView = webView
         
         webView.alpha = 0
         
         WebViewPreloader.shared.close()
-        
-        return webView
     }
     
-    func updateUIView(_ webView: WKWebView, context: Context) {
-        context.coordinator.parent = self
+    func updateWebView(_ webView: WKWebView, coordinator: Coordinator) {
+        coordinator.parent = self
         
         if !bridge.pendingCommands.isEmpty {
             let commands = bridge.pendingCommands
@@ -111,28 +90,28 @@ struct ScrollReaderWebView: UIViewRepresentable {
             for command in commands {
                 switch command {
                 case .loadChapter(let url, let progress, let fragment, let sasayakiCues, let highlights):
-                    context.coordinator.currentURL = url
-                    context.coordinator.pendingProgress = progress
-                    context.coordinator.pendingFragment = fragment
-                    context.coordinator.pendingSasayakiCues = sasayakiCues
-                    context.coordinator.pendingHighlights = highlights
-                    context.coordinator.isRestoring = true
+                    coordinator.currentURL = url
+                    coordinator.pendingProgress = progress
+                    coordinator.pendingFragment = fragment
+                    coordinator.pendingSasayakiCues = sasayakiCues
+                    coordinator.pendingHighlights = highlights
+                    coordinator.isRestoring = true
                     if let appDirectory = try? BookStorage.getAppDirectory() {
-                        webView.scrollView.delegate = nil
+                        coordinator.setScrollTracking(false)
                         webView.alpha = 0
                         webView.loadFileURL(url, allowingReadAccessTo: appDirectory)
                     }
                 case .restoreProgress(let progress):
-                    context.coordinator.pendingProgress = progress
-                    context.coordinator.pendingFragment = nil
-                    context.coordinator.shouldSyncProgressAfterRestore = false
-                    context.coordinator.isRestoring = true
-                    webView.scrollView.delegate = nil
+                    coordinator.pendingProgress = progress
+                    coordinator.pendingFragment = nil
+                    coordinator.shouldSyncProgressAfterRestore = false
+                    coordinator.isRestoring = true
+                    coordinator.setScrollTracking(false)
                     webView.evaluateJavaScript("window.hoshiReader.restoreProgress(\(progress))") { _, _ in }
                 case .jumpToFragment(let fragment):
-                    context.coordinator.jumpToFragment(fragment)
+                    coordinator.jumpToFragment(fragment)
                 case .clearSelection:
-                    context.coordinator.clearSelection()
+                    coordinator.clearSelection()
                 case .updateTextColor(let hex):
                     if let hex {
                         webView.evaluateJavaScript("document.documentElement.style.setProperty('--hoshi-text-color', '\(hex)')") { _, _ in }
@@ -148,7 +127,7 @@ struct ScrollReaderWebView: UIViewRepresentable {
                     webView.evaluateJavaScript("window.hoshiReader.applySasayakiCues(\(cues))") { _, _ in completion?() }
                 case .highlightSasayakiCue(let id, let reveal):
                     let revealFlag = reveal ? "true" : "false"
-                    let cue = context.coordinator.javaScriptStringLiteral(id)
+                    let cue = coordinator.javaScriptStringLiteral(id)
                     webView.evaluateJavaScript("window.hoshiReader.highlightSasayakiCue(\(cue), \(revealFlag))") { result, _ in
                         if let progress = result as? Double {
                             onScroll()
@@ -168,7 +147,7 @@ struct ScrollReaderWebView: UIViewRepresentable {
                         completion?(body != nil)
                     }
                 case .removeHighlight(let id):
-                    let literal = context.coordinator.javaScriptStringLiteral(id)
+                    let literal = coordinator.javaScriptStringLiteral(id)
                     webView.evaluateJavaScript("window.hoshiHighlights.removeHighlight(\(literal))") { _, _ in }
                 case .showSearchHighlight(let offset, let length):
                     webView.evaluateJavaScript("window.hoshiHighlights.showSearchHighlight(\(offset), \(length))") { _, _ in }
@@ -177,28 +156,28 @@ struct ScrollReaderWebView: UIViewRepresentable {
             return
         }
         
-        if context.coordinator.currentURL == nil, let url = bridge.chapterURL {
-            context.coordinator.currentURL = url
-            context.coordinator.pendingProgress = bridge.progress
-            context.coordinator.pendingFragment = nil
-            context.coordinator.pendingSasayakiCues = bridge.sasayakiCues
-            context.coordinator.pendingHighlights = bridge.highlights
-            context.coordinator.isRestoring = true
+        if coordinator.currentURL == nil, let url = bridge.chapterURL {
+            coordinator.currentURL = url
+            coordinator.pendingProgress = bridge.progress
+            coordinator.pendingFragment = nil
+            coordinator.pendingSasayakiCues = bridge.sasayakiCues
+            coordinator.pendingHighlights = bridge.highlights
+            coordinator.isRestoring = true
             guard let appDirectory = try? BookStorage.getAppDirectory() else { return }
-            webView.scrollView.delegate = nil
+            coordinator.setScrollTracking(false)
             webView.alpha = 0
             webView.loadFileURL(url, allowingReadAccessTo: appDirectory)
         }
     }
     
-    static func dismantleUIView(_ webView: WKWebView, coordinator: Coordinator) {
+    static func dismantleWebView(_ webView: WKWebView, coordinator: Coordinator) {
         webView.configuration.userContentController.removeScriptMessageHandler(forName: "textSelected")
         webView.configuration.userContentController.removeScriptMessageHandler(forName: "restoreCompleted")
         webView.configuration.userContentController.removeScriptMessageHandler(forName: "selectionState")
         webView.configuration.userContentController.removeScriptMessageHandler(forName: "imageTapped")
     }
     
-    class Coordinator: NSObject, WKNavigationDelegate, UIGestureRecognizerDelegate, WKScriptMessageHandler, UIScrollViewDelegate {
+    class Coordinator: NSObject, WKNavigationDelegate, WKScriptMessageHandler {
         var parent: ScrollReaderWebView
         weak var webView: WKWebView?
         var currentURL: URL?
@@ -233,13 +212,13 @@ struct ScrollReaderWebView: UIViewRepresentable {
                     shouldSyncProgressAfterRestore = false
                     syncLinkJumpProgress()
                 }
-                UIView.animate(withDuration: 0.25) {
+                Platform.animate(withDuration: 0.25) {
                     message.webView?.alpha = 1
                 }
                 parent.onRestoreCompleted()
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) { [weak self] in
                     guard let self else { return }
-                    self.webView?.scrollView.delegate = self
+                    self.setScrollTracking(true)
                     self.isRestoring = false
                 }
             }
@@ -254,9 +233,9 @@ struct ScrollReaderWebView: UIViewRepresentable {
                       let h = rectData["height"] as? CGFloat else {
                     return
                 }
-                let scrollBounds = message.webView?.scrollView.bounds ?? .zero
+                let scrollOrigin = scrollOrigin(of: message.webView)
                 let rect = CGRect(x: x, y: y, width: w, height: h)
-                    .offsetBy(dx: 0, dy: parent.userConfig.verticalWriting ? -scrollBounds.origin.y : 0)
+                    .offsetBy(dx: 0, dy: parent.userConfig.verticalWriting ? -scrollOrigin.y : 0)
                 let normalizedOffset = body["normalizedOffset"] as? Int
                 let clozeOffset = body["clozeOffset"] as? Int
                 let selectionData = SelectionData(text: text, sentence: sentence, rect: rect, normalizedOffset: normalizedOffset, clozeOffset: clozeOffset)
@@ -308,15 +287,7 @@ struct ScrollReaderWebView: UIViewRepresentable {
         }
         
         func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
-            webView.scrollView.subviews.forEach { subview in
-                subview.gestureRecognizers?.forEach { recognizer in
-                    if let tapRecognizer = recognizer as? UITapGestureRecognizer,
-                       tapRecognizer.numberOfTapsRequired == 2,
-                       tapRecognizer.numberOfTouchesRequired == 1 {
-                        subview.removeGestureRecognizer(recognizer)
-                    }
-                }
-            }
+            removeDoubleTapZoom(from: webView)
             
             let writingMode = parent.userConfig.verticalWriting ? "vertical-rl" : "horizontal-tb"
             
@@ -396,8 +367,8 @@ struct ScrollReaderWebView: UIViewRepresentable {
             let css = """
             \(fontFaceCss)
             :root {
-                --hoshi-sasayaki-text-color: \(UIColor(parent.sasayakiTextColor).hexString);
-                --hoshi-sasayaki-background-color: \(UIColor(parent.sasayakiBackgroundColor).hexString);
+                --hoshi-sasayaki-text-color: \(PlatformColor(parent.sasayakiTextColor).hexString);
+                --hoshi-sasayaki-background-color: \(PlatformColor(parent.sasayakiBackgroundColor).hexString);
             }
             html, body {
                 margin: 0 !important;
@@ -631,15 +602,15 @@ struct ScrollReaderWebView: UIViewRepresentable {
             pendingHighlights = parent.bridge.highlights
             shouldSyncProgressAfterRestore = false
             isRestoring = true
-            webView.scrollView.delegate = nil
+            setScrollTracking(false)
             (webView as? HoshiWKWebView)?.hasSelection = false
             webView.alpha = 0
             parent.onProcessTerminated()
             webView.loadFileURL(currentURL, allowingReadAccessTo: appDirectory)
         }
         
-        @objc func handleTap(_ gesture: UITapGestureRecognizer) {
-            guard let webView = webView, !webView.scrollView.isDecelerating else {
+        func handleTap(at point: CGPoint) {
+            guard let webView = webView else {
                 return
             }
             
@@ -647,7 +618,6 @@ struct ScrollReaderWebView: UIViewRepresentable {
                 return
             }
             
-            let point = gesture.location(in: webView)
             guard parent.doubleTapSeekEnabled else {
                 selectText(at: point)
                 return
@@ -673,7 +643,7 @@ struct ScrollReaderWebView: UIViewRepresentable {
             }
         }
         
-        private func hitTestText(at point: CGPoint, completion: @escaping (Int?) -> Void) {
+        func hitTestText(at point: CGPoint, completion: @escaping (Int?) -> Void) {
             guard let webView = webView else {
                 completion(nil)
                 return
@@ -684,7 +654,7 @@ struct ScrollReaderWebView: UIViewRepresentable {
             }
         }
         
-        private func selectText(at point: CGPoint) {
+        func selectText(at point: CGPoint) {
             guard let webView = webView else {
                 return
             }
@@ -714,7 +684,7 @@ struct ScrollReaderWebView: UIViewRepresentable {
             }
             shouldSyncProgressAfterRestore = true
             isRestoring = true
-            webView.scrollView.delegate = nil
+            setScrollTracking(false)
             let script = "window.hoshiReader.jumpToFragment(\(javaScriptStringLiteral(fragment)))"
             webView.evaluateJavaScript(script) { _, _ in }
         }
@@ -758,7 +728,7 @@ struct ScrollReaderWebView: UIViewRepresentable {
                 return false
             }
             if scheme == "http" || scheme == "https" {
-                UIApplication.shared.open(url)
+                Platform.open(url)
                 return true
             }
             return false
@@ -779,42 +749,8 @@ struct ScrollReaderWebView: UIViewRepresentable {
             webView.evaluateJavaScript("window.hoshiSelection.clearSelection()") { _, _ in }
         }
         
-        func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer, shouldRecognizeSimultaneouslyWith otherGestureRecognizer: UIGestureRecognizer) -> Bool {
-            if otherGestureRecognizer is UILongPressGestureRecognizer {
-                return false
-            }
-            return true
-        }
-        
-        func scrollViewWillEndDragging(_ scrollView: UIScrollView, withVelocity velocity: CGPoint, targetContentOffset: UnsafeMutablePointer<CGPoint>) {
-            let vertical = parent.userConfig.verticalWriting
-            let offset = vertical ? scrollView.contentOffset.x : scrollView.contentOffset.y
-            let contentSize = vertical ? scrollView.contentSize.width : scrollView.contentSize.height
-            let viewSize = vertical ? scrollView.bounds.width : scrollView.bounds.height
-            let maxOffset = max(contentSize - viewSize, 0)
-            let threshold = CGFloat(parent.userConfig.chapterSwipeDistance)
-            
-            let scrolledPastEnd = vertical ? offset < -threshold : offset > maxOffset + threshold
-            let scrolledPastStart = vertical ? offset > maxOffset + threshold : offset < -threshold
-            
-            if scrolledPastEnd {
-                webView?.scrollView.delegate = nil
-                if parent.onNextChapter() {
-                    webView?.alpha = 0
-                } else {
-                    webView?.scrollView.delegate = self
-                }
-            } else if scrolledPastStart {
-                webView?.scrollView.delegate = nil
-                if parent.onPreviousChapter() {
-                    webView?.alpha = 0
-                } else {
-                    webView?.scrollView.delegate = self
-                }
-            }
-        }
-        
-        func scrollViewDidScroll(_ scrollView: UIScrollView) {
+        /// Scroll progress for both platforms: closes popups, then reports progress at most every 50 ms.
+        func handleScroll() {
             guard !isRestoring else { return }
             parent.onScroll()
             let now = CACurrentMediaTime()
@@ -827,17 +763,22 @@ struct ScrollReaderWebView: UIViewRepresentable {
             }
         }
         
-        func scrollViewDidEndDecelerating(_ scrollView: UIScrollView) {
+        func handleScrollEnded() {
             saveBookmark()
             clearSelection()
         }
         
-        func scrollViewDidEndDragging(_ scrollView: UIScrollView, willDecelerate decelerate: Bool) {
-            if !decelerate {
-                saveBookmark()
-                clearSelection()
+        /// Moves to the next or previous chapter after scrolling past an edge.
+        @discardableResult
+        func changeChapter(_ direction: NavigationDirection) -> Bool {
+            setScrollTracking(false)
+            let changed = direction == .forward ? parent.onNextChapter() : parent.onPreviousChapter()
+            if changed {
+                webView?.alpha = 0
+            } else {
+                setScrollTracking(true)
             }
+            return changed
         }
     }
 }
-#endif
