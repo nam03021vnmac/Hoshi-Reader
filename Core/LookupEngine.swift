@@ -61,7 +61,7 @@ class LookupEngine {
         var options = LookupOptions()
         options.frequency_order = config.frequencySortOrder.lookupFrequencyOrder
         if config.frequencySortOrder.usesDictionary && !config.frequencySortDictionary.isEmpty {
-            options.frequency_dictionary = .init(std.string(config.frequencySortDictionary))
+            options.set_frequency_dictionary(std.string(config.frequencySortDictionary))
         }
         var results = Array(bundle.lookup.lookup(std.string(str), Int32(maxResults), scanLength, options))
 

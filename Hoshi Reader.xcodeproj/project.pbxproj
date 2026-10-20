@@ -308,7 +308,7 @@
 			packageReferences = (
 				48568CD12F1EC9A400F9C126 /* XCLocalSwiftPackageReference "Libraries/EPUBKit" */,
 				48A18AB92F465F1F00AC8514 /* XCRemoteSwiftPackageReference "SwiftUI-Introspect" */,
-				48BC0BDD2F5C316B00EDAC3F /* XCRemoteSwiftPackageReference "hoshidicts" */,
+				48BC0BDD2F5C316B00EDAC3F /* XCLocalSwiftPackageReference "../hoshidicts" */,
 				48F0AF152FF574F8004B75F8 /* XCRemoteSwiftPackageReference "SwiftLAME" */,
 				21953111D6FA01149E61C245 /* XCRemoteSwiftPackageReference "onnxruntime-swift-package-manager" */,
 			);
@@ -701,6 +701,10 @@
 			isa = XCLocalSwiftPackageReference;
 			relativePath = Libraries/EPUBKit;
 		};
+		48BC0BDD2F5C316B00EDAC3F /* XCLocalSwiftPackageReference "../hoshidicts" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = ../hoshidicts;
+		};
 /* End XCLocalSwiftPackageReference section */
 
 /* Begin XCRemoteSwiftPackageReference section */
@@ -718,14 +722,6 @@
 			requirement = {
 				kind = upToNextMajorVersion;
 				minimumVersion = 26.0.0;
-			};
-		};
-		48BC0BDD2F5C316B00EDAC3F /* XCRemoteSwiftPackageReference "hoshidicts" */ = {
-			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://github.com/Manhhao/hoshidicts.git";
-			requirement = {
-				branch = main;
-				kind = branch;
 			};
 		};
 		48F0AF152FF574F8004B75F8 /* XCRemoteSwiftPackageReference "SwiftLAME" */ = {
@@ -750,7 +746,6 @@
 		};
 		48BC0BDE2F5C316B00EDAC3F /* CHoshiDicts */ = {
 			isa = XCSwiftPackageProductDependency;
-			package = 48BC0BDD2F5C316B00EDAC3F /* XCRemoteSwiftPackageReference "hoshidicts" */;
 			productName = CHoshiDicts;
 		};
 		48F0AF172FF5750F004B75F8 /* SwiftLAME */ = {
