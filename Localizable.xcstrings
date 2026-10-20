@@ -609,6 +609,9 @@
         }
       }
     },
+    "Back" : {
+
+    },
     "Background Audio" : {
       "comment" : "Context: Settings > Audio. Surrounding UI manages Yomitan JSON audio sources, local audio database import, autoplay, and background audio behavior.",
       "localizations" : {
@@ -915,6 +918,9 @@
 
     },
     "Control Bar Side" : {
+
+    },
+    "Copy" : {
 
     },
     "Could not access .epub file" : {
@@ -1268,6 +1274,9 @@
         }
       }
     },
+    "Drop to Import" : {
+
+    },
     "Enable" : {
       "comment" : "Context: Shared Hoshi Reader label or action. Surrounding UI may be a settings row, alert button, toolbar item, or reader context menu.",
       "localizations" : {
@@ -1374,6 +1383,9 @@
         }
       }
     },
+    "Forward" : {
+
+    },
     "Full-width" : {
       "comment" : "Context: Settings > Appearance. Surrounding UI is a grouped form for reader theme, text, layout, display, and popup controls.",
       "localizations" : {
@@ -1477,6 +1489,9 @@
         }
       }
     },
+    "Hoshi Reader" : {
+
+    },
     "Hours" : {
 
     },
@@ -1512,6 +1527,9 @@
           }
         }
       }
+    },
+    "Import Books…" : {
+
     },
     "Import Font" : {
       "comment" : "Context: Settings > Appearance. Surrounding UI is a grouped form for reader theme, text, layout, display, and popup controls.",
@@ -1906,6 +1924,7 @@
     },
     "Model" : {
       "comment" : "Context: Shared Hoshi Reader label or action. Surrounding UI may be a settings row, alert button, toolbar item, or reader context menu.",
+      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -2465,6 +2484,7 @@
       }
     },
     "Recognizing pages %lld / %lld" : {
+      "comment" : "Context: PDF reader. Surrounding UI is the reader menu, overlays, sheets, or alerts for PDF books.",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -2478,8 +2498,7 @@
             "value" : "正在识别页面 %1$lld / %2$lld"
           }
         }
-      },
-      "comment" : "Context: PDF reader. Surrounding UI is the reader menu, overlays, sheets, or alerts for PDF books."
+      }
     },
     "Recognizing text…" : {
       "comment" : "Context: PDF reader. Surrounding UI is the reader menu, overlays, sheets, or alerts for PDF books.",
@@ -3445,6 +3464,15 @@
           }
         }
       }
+    },
+    "Zoom In" : {
+
+    },
+    "Zoom Out" : {
+
+    },
+    "Zoom to Fit" : {
+
     },
     "ッツ Backup" : {
       "localizations" : {

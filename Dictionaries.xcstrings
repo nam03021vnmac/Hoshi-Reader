@@ -43,6 +43,9 @@
         }
       }
     },
+    "Anki with the AnkiConnect add-on must be running to mine words." : {
+
+    },
     "AnkiConnect" : {
       "comment" : "Context: Settings > AnkiConnect. Surrounding UI configures server address, connection status, duplicate scope, model checks, and forced sync behavior.",
       "localizations" : {
