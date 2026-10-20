@@ -51,20 +51,27 @@ struct BookshelfView: View {
                             .frame(maxWidth: .infinity)
                             .padding(.top, 160)
                         } else {
-                            ForEach(sections) { section in
-                                if section.books.count > 0 {
-                                    ShelfView(
-                                        viewModel: viewModel,
-                                        section: section,
-                                        showTitle: sections.count > 1,
-                                        isSelecting: isSelecting,
-                                        selectedBooks: $selectedBooks,
-                                        pendingLookup: $pendingLookup,
-                                        pendingTab: $pendingTab,
-                                        onMatch: { sasayakiBook = $0 }
-                                    )
+                            VStack {
+                                ForEach(sections) { section in
+                                    if section.books.count > 0 {
+                                        ShelfView(
+                                            viewModel: viewModel,
+                                            section: section,
+                                            showTitle: sections.count > 1,
+                                            isSelecting: isSelecting,
+                                            selectedBooks: $selectedBooks,
+                                            pendingLookup: $pendingLookup,
+                                            pendingTab: $pendingTab,
+                                            onMatch: { sasayakiBook = $0 }
+                                        )
+                                    }
                                 }
                             }
+                            #if os(macOS)
+                            // iOS has the large title above the first shelf; on a Mac it would touch the toolbar
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 20)
+                            #endif
                         }
                     }
                     .navigationTitle("Books")
@@ -131,6 +138,9 @@ struct BookshelfView: View {
             }
             
             Tab("Settings", systemImage: "gearshape", value: 3) {
+                #if os(macOS)
+                MacSettingsView()
+                #else
                 NavigationStack {
                     List {
                         Button {
@@ -186,6 +196,7 @@ struct BookshelfView: View {
                         }
                     }
                 }
+                #endif
             }
         }
         #if os(macOS)

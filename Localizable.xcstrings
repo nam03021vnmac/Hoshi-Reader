@@ -320,6 +320,17 @@
         }
       }
     },
+    "4. You can sync individual books by right-clicking and selecting '**Sync**'." : {
+      "comment" : "Context: Settings > Syncing. Surrounding UI explains Google Drive setup, then shows sync direction, auto-sync, Client ID, status, sign-out, and connect controls. Preserve product names and Markdown.",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "4. 你可以右键点击单本书并选择“**同步**”来同步。"
+          }
+        }
+      }
+    },
     "A **[Google Cloud project](https://github.com/ttu-ttu/ebook-reader?tab=readme-ov-file#storage-sources)** is necessary for syncing." : {
       "comment" : "Context: Settings > Syncing. Surrounding UI explains Google Drive setup, then shows sync direction, auto-sync, Client ID, status, sign-out, and connect controls. Preserve product names and Markdown.",
       "localizations" : {
@@ -1230,6 +1241,17 @@
         }
       }
     },
+    "Double-Click Text to Play Audio" : {
+      "comment" : "Context: Sasayaki audiobook feature screens. Surrounding UI includes setup instructions, SRT/audio matching, playback controls, command center options, and Sasayaki theme settings. Preserve Markdown and product names.",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "双击文本播放音频"
+          }
+        }
+      }
+    },
     "Double-Tap Text to Play Audio" : {
       "comment" : "Context: Sasayaki audiobook feature screens. Surrounding UI includes setup instructions, SRT/audio matching, playback controls, command center options, and Sasayaki theme settings. Preserve Markdown and product names.",
       "localizations" : {
@@ -1891,6 +1913,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "正在匹配…"
+          }
+        }
+      }
+    },
+    "Media Controls" : {
+      "comment" : "Context: Sasayaki audiobook feature screens. Surrounding UI includes setup instructions, SRT/audio matching, playback controls, command center options, and Sasayaki theme settings. Preserve Markdown and product names.",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "媒体控制"
           }
         }
       }
@@ -2582,6 +2615,17 @@
     "Right" : {
 
     },
+    "Right-click a book and choose **Match**." : {
+      "comment" : "Context: Sasayaki audiobook feature screens. Surrounding UI includes setup instructions, SRT/audio matching, playback controls, command center options, and Sasayaki theme settings. Preserve Markdown and product names.",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "右键点击一本书并选择 **匹配**。"
+          }
+        }
+      }
+    },
     "Right-to-Left Pages" : {
       "comment" : "Context: Settings > Advanced > PDF. Surrounding UI is a grouped form for PDF display and OCR (text recognition) options.",
       "localizations" : {
@@ -2690,6 +2734,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "设置"
+          }
+        }
+      }
+    },
+    "Settings…" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "设置…"
           }
         }
       }

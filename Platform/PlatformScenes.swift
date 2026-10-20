@@ -21,6 +21,7 @@ struct LibraryWindow<Content: View>: Scene {
         Window("Hoshi Reader", id: "library") {
             content()
                 .frame(minWidth: 560, minHeight: 420)
+                .translucentWindowBackground()
         }
         .defaultSize(width: 1100, height: 760)
         #else

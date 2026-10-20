@@ -97,10 +97,19 @@ struct HoshiReaderApp: App {
         #endif
 
         #if os(macOS)
-        Settings {
+        // a Window rather than a Settings scene, which gets the preferences toolbar: that gives
+        // each screen's buttons a centered row of their own instead of the library's compact
+        // toolbar. MacCommands opens it with ⌘,.
+        Window("Settings", id: MacCommands.settingsWindowID) {
             MacSettingsView()
+                .frame(minWidth: 720, minHeight: 520)
+                .translucentWindowBackground()
                 .environment(userConfig)
         }
+        .defaultSize(width: 820, height: 680)
+        .windowToolbarStyle(.unified)
+        // keep it out of the Window menu, like a settings window
+        .commandsRemoved()
         #endif
     }
     

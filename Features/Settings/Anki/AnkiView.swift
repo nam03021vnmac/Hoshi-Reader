@@ -18,7 +18,7 @@ struct AnkiView: View {
     private let maxFormats = 3
     
     var body: some View {
-        List {
+        SettingsList {
             Section {
                 if ankiManager.useAnkiConnect && !ankiManager.isConnected {
                     Button {
@@ -65,6 +65,7 @@ struct AnkiView: View {
                         }
                     }
                 }
+                .settingsFooter()
             }
             .fileImporter(
                 isPresented: $isImporting,

@@ -12,7 +12,18 @@ import SwiftUI
 /// Menu bar commands. Books and Dictionary route through `ShortcutHandler`, the same
 /// path the iOS home-screen shortcuts use; Import Books… is handled by the bookshelf.
 struct MacCommands: Commands {
+    static let settingsWindowID = "settings"
+
+    @Environment(\.openWindow) private var openWindow
+
     var body: some Commands {
+        CommandGroup(replacing: .appSettings) {
+            Button("Settings…") {
+                openWindow(id: Self.settingsWindowID)
+            }
+            .keyboardShortcut(",", modifiers: .command)
+        }
+
         CommandGroup(replacing: .newItem) {
             Button("Import Books…") {
                 NotificationCenter.default.post(name: .importBooks, object: nil)
@@ -52,6 +63,13 @@ struct MacCommands: Commands {
             .keyboardShortcut("0", modifiers: .command)
 
             Divider()
+        }
+
+        // the iOS Settings tab links here; a Mac app keeps it in the Help menu
+        CommandGroup(replacing: .help) {
+            Button("Report an Issue") {
+                Platform.open(URL(string: "https://github.com/Manhhao/Hoshi-Reader/issues")!)
+            }
         }
     }
 }

@@ -13,7 +13,7 @@ struct AnkiConnectView: View {
     @State private var ankiManager = AnkiManager.shared
     
     var body: some View {
-        List {
+        SettingsList {
             #if os(iOS)
             Section {
                 Toggle(isOn: $ankiManager.useAnkiConnect) {
@@ -22,6 +22,7 @@ struct AnkiConnectView: View {
                 .onChange(of: ankiManager.useAnkiConnect) { _, _ in ankiManager.save() }
             } footer: {
                 Text("This will replace AnkiMobile callbacks with AnkiConnect requests.", tableName: "Dictionaries")
+                    .settingsFooter()
             }
             #endif
             if ankiManager.useAnkiConnect {
@@ -52,6 +53,7 @@ struct AnkiConnectView: View {
                 } footer: {
                     if ankiManager.useAnkiConnect {
                         Text("Status: \(connectionStatus)", tableName: "Dictionaries")
+                            .settingsFooter()
                     }
                 }
             }

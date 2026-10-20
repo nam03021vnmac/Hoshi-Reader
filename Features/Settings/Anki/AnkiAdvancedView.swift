@@ -21,7 +21,7 @@ struct AnkiAdvancedView: View {
     ]
     
     var body: some View {
-        List {
+        SettingsList {
             Section {
                 if !ankiManager.useAnkiConnect {
                     VStack {

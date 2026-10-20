@@ -45,7 +45,7 @@ struct AnkiCardFormatView: View {
     }
     
     var body: some View {
-        List {
+        SettingsList {
             if let index = formatIndex {
                 Section {
                     TextField(text: $ankiManager.cardFormats[index].name, prompt: Text("Name", tableName: "Dictionaries")) {

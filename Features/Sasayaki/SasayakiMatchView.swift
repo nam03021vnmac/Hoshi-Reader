@@ -42,7 +42,7 @@ struct SasayakiMatchView: View {
                             Text("\(Int(searchWindow))")
                                 .fontWeight(.semibold)
                         }
-                        Slider(value: $searchWindow, in: 50...1000, step: 50)
+                        SteppedSlider(value: $searchWindow, in: 50...1000, step: 50)
                     }
                     Button {
                         matchFile()

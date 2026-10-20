@@ -60,7 +60,7 @@ struct PDFContentsSheet: View {
                         }
                         
                         if viewModel.pageCount > 1 {
-                            Slider(value: $sliderValue, in: 1...Double(viewModel.pageCount), step: 1) { editing in
+                            SteppedSlider(value: $sliderValue, in: 1...Double(viewModel.pageCount), step: 1) { editing in
                                 if !editing {
                                     go(to: selectedPage - 1)
                                 }

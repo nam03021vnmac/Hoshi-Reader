@@ -22,7 +22,7 @@ struct BackupView: View {
     @State private var showError = false
     
     var body: some View {
-        List {
+        SettingsList {
             Section("Books") {
                 Button("Backup") {
                     backupFolder(folder: "Books")
@@ -53,6 +53,7 @@ struct BackupView: View {
                 Text("Dictionaries")
             } footer: {
                 Text("Restoring will overwrite the current collection.")
+                    .settingsFooter()
             }
             
             Section {
@@ -66,6 +67,7 @@ struct BackupView: View {
                 Text("ッツ Backup")
             } footer: {
                 Text("Importing a backup adds new books and overwrites the statistics and reading progress of books already present.")
+                    .settingsFooter()
             }
             .fileImporter(
                 isPresented: $isImportingTtu,

@@ -84,7 +84,7 @@ struct SasayakiSheet: View {
                                 .monospacedDigit()
                                 .fontWeight(.semibold)
                         }
-                        Slider(value: Bindable(player).delay, in: -4...4, step: 0.05)
+                        SteppedSlider(value: Bindable(player).delay, in: -4...4, step: 0.05)
                     }
                     VStack {
                         HStack {
@@ -94,7 +94,7 @@ struct SasayakiSheet: View {
                                 .monospacedDigit()
                                 .fontWeight(.semibold)
                         }
-                        Slider(value: Bindable(player).rate, in: 0.5...3, step: 0.05)
+                        SteppedSlider(value: Bindable(player).rate, in: 0.5...3, step: 0.05)
                     }
                 }
                 
@@ -102,7 +102,7 @@ struct SasayakiSheet: View {
                     Toggle("Show Sasayaki Toggle", isOn: Bindable(userConfig).readerShowSasayakiToggle)
                     Toggle("Auto-Scroll", isOn: Bindable(userConfig).sasayakiAutoScroll)
                     Toggle("Auto-Pause on Lookup", isOn: Bindable(userConfig).sasayakiAutoPause)
-                    Toggle("Double-Tap Text to Play Audio", isOn: Bindable(userConfig).sasayakiDoubleTapSeek)
+                    Toggle(SasayakiSettingsView.doubleTapSeekTitle, isOn: Bindable(userConfig).sasayakiDoubleTapSeek)
                     Toggle("Pause on Images", isOn: Bindable(userConfig).sasayakiImagePause)
                     if userConfig.sasayakiImagePause {
                         HStack {
@@ -128,6 +128,7 @@ struct SasayakiSheet: View {
                                 Text("Right").tag(SasayakiControlBarSide.right)
                             }
                             .pickerStyle(.segmented)
+                            .labelsHidden()
                             .frame(width: 120)
                         }
                     }
@@ -143,6 +144,7 @@ struct SasayakiSheet: View {
                     ColorPicker("Background Color", selection: Bindable(userConfig).sasayakiDarkBackgroundColor)
                 }
             }
+            .formStyle(.grouped)
             .navigationTitle("Sasayaki")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
