@@ -526,12 +526,16 @@ final class PDFReaderViewModel {
         isChoosingCover = true
     }
 
-    /// Saves the part of the page under `box` (in the PDF view's coordinates) as the book's cover,
+    /// Saves the part of the page under `box` (over the PDF view, origin at the top left) as the book's cover,
     /// e.g. the front of a dust jacket scanned as one wide page
     func setCover(from box: CGRect) {
         isChoosingCover = false
-        guard let pdfView, let document, let rootURL, let pdf = book.pdf,
-              let page = pdfView.page(for: CGPoint(x: box.midX, y: box.midY), nearest: true) else {
+        guard let pdfView, let document, let rootURL, let pdf = book.pdf else {
+            showCoverNotice(.failed)
+            return
+        }
+        let box = pdfView.viewRect(fromTopLeft: box)
+        guard let page = pdfView.page(for: CGPoint(x: box.midX, y: box.midY), nearest: true) else {
             showCoverNotice(.failed)
             return
         }

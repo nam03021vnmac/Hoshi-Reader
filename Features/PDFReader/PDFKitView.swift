@@ -35,6 +35,16 @@ extension PDFView {
         #endif
         return converted
     }
+
+    /// Converts a rect with the origin at the top left, as SwiftUI uses, to the view's own coordinates.
+    func viewRect(fromTopLeft rect: CGRect) -> CGRect {
+        #if os(macOS)
+        if !isFlipped {
+            return CGRect(x: rect.minX, y: bounds.height - rect.maxY, width: rect.width, height: rect.height)
+        }
+        #endif
+        return rect
+    }
 }
 
 #if os(iOS)
