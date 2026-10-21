@@ -43,6 +43,7 @@ final class PDFReaderViewModel {
     var bookOCRProgress: (done: Int, total: Int)?
     var ocrError: String?
     var coverNotice: PDFCoverNotice?
+    var isChoosingCover = false
     var showTextBoxes = false {
         didSet { updateTextBoxes() }
     }
@@ -519,23 +520,28 @@ final class PDFReaderViewModel {
     
     // MARK: cover
 
-    /// Saves the part of the page in the middle of the screen that's visible as the book's cover,
+    func beginChoosingCover() {
+        clearSelection()
+        closePopups()
+        isChoosingCover = true
+    }
+
+    /// Saves the part of the page under `box` (in the PDF view's coordinates) as the book's cover,
     /// e.g. the front of a dust jacket scanned as one wide page
-    func setCoverFromVisibleArea() {
+    func setCover(from box: CGRect) {
+        isChoosingCover = false
         guard let pdfView, let document, let rootURL, let pdf = book.pdf,
-              let page = pdfView.page(for: CGPoint(x: pdfView.bounds.midX, y: pdfView.bounds.midY), nearest: true) else {
+              let page = pdfView.page(for: CGPoint(x: box.midX, y: box.midY), nearest: true) else {
+            showCoverNotice(.failed)
             return
         }
-        // cut in view space so the cover keeps the shelf's shape on rotated pages too
-        let visible = pdfView.convert(page.bounds(for: .cropBox), from: page).intersection(pdfView.bounds)
-        guard !visible.isNull, visible.width >= 1, visible.height >= 1 else {
+        // fitted in view space so the cover keeps the shelf's shape on rotated pages too
+        let pageRect = pdfView.convert(page.bounds(for: .cropBox), from: page)
+        guard pageRect.width >= 1, pageRect.height >= 1 else {
+            showCoverNotice(.failed)
             return
         }
-        let size = visible.width / visible.height > BookCover.aspectRatio
-            ? CGSize(width: visible.height * BookCover.aspectRatio, height: visible.height)
-            : CGSize(width: visible.width, height: visible.width / BookCover.aspectRatio)
-        let cover = CGRect(x: visible.midX - size.width / 2, y: visible.midY - size.height / 2, width: size.width, height: size.height)
-        let region = pdfView.convert(cover, to: page)
+        let region = pdfView.convert(Self.fit(box, in: pageRect), to: page)
         let pageIndex = document.index(for: page)
         let pdfURL = rootURL.appendingPathComponent(pdf)
         let folder = book.folder
@@ -568,6 +574,15 @@ final class PDFReaderViewModel {
             }
             showCoverNotice(saved ? .saved : .failed)
         }
+    }
+
+    /// Moves `rect` onto the page, shrinking it to the same shape if it's bigger, so the cover has no blank edges
+    private static func fit(_ rect: CGRect, in bounds: CGRect) -> CGRect {
+        let scale = min(1, bounds.width / rect.width, bounds.height / rect.height)
+        var fitted = CGRect(x: 0, y: 0, width: rect.width * scale, height: rect.height * scale)
+        fitted.origin.x = min(max(rect.midX - fitted.width / 2, bounds.minX), bounds.maxX - fitted.width)
+        fitted.origin.y = min(max(rect.midY - fitted.height / 2, bounds.minY), bounds.maxY - fitted.height)
+        return fitted
     }
 
     private func showCoverNotice(_ notice: PDFCoverNotice) {
