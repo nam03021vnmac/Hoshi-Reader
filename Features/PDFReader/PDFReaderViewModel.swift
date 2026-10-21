@@ -526,10 +526,16 @@ final class PDFReaderViewModel {
               let page = pdfView.page(for: CGPoint(x: pdfView.bounds.midX, y: pdfView.bounds.midY), nearest: true) else {
             return
         }
-        let region = pdfView.convert(pdfView.bounds, to: page).intersection(page.bounds(for: .cropBox))
-        guard !region.isNull, region.width >= 1, region.height >= 1 else {
+        // cut in view space so the cover keeps the shelf's shape on rotated pages too
+        let visible = pdfView.convert(page.bounds(for: .cropBox), from: page).intersection(pdfView.bounds)
+        guard !visible.isNull, visible.width >= 1, visible.height >= 1 else {
             return
         }
+        let size = visible.width / visible.height > BookCover.aspectRatio
+            ? CGSize(width: visible.height * BookCover.aspectRatio, height: visible.height)
+            : CGSize(width: visible.width, height: visible.width / BookCover.aspectRatio)
+        let cover = CGRect(x: visible.midX - size.width / 2, y: visible.midY - size.height / 2, width: size.width, height: size.height)
+        let region = pdfView.convert(cover, to: page)
         let pageIndex = document.index(for: page)
         let pdfURL = rootURL.appendingPathComponent(pdf)
         let folder = book.folder

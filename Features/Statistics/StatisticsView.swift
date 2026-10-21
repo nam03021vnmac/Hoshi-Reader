@@ -92,7 +92,7 @@ private struct BookStatisticsRow: View {
     let maxReadingTime: Double
     @State private var availableWidth: CGFloat = 0
     
-    private let coverAspectRatio: CGFloat = 0.709
+    private let coverAspectRatio = BookCover.aspectRatio
     private let cornerRadius: CGFloat = 4
     
     private var barFraction: Double {

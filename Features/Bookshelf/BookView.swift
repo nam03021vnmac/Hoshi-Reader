@@ -31,12 +31,15 @@ struct BookView: View {
 }
 
 struct BookCover: View {
+    /// width / height of covers on the bookshelf
+    nonisolated static let aspectRatio: CGFloat = 0.709
+    
     @Environment(UserConfig.self) private var userConfig
     let book: BookMetadata
     var progress: Double? = nil
     var isSelected: Bool = false
     
-    private let coverAspectRatio: CGFloat = 0.709
+    private let coverAspectRatio = BookCover.aspectRatio
     private let innerCornerRadius: CGFloat = 6
     private let outerCornerRadius: CGFloat = 7
     
