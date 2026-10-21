@@ -227,10 +227,27 @@ struct PDFReaderView: View {
                     .allowsHitTesting(false)
                     .transition(.opacity)
                 }
+                if let notice = viewModel.coverNotice {
+                    Group {
+                        switch notice {
+                        case .saved:
+                            Label("Cover Updated", systemImage: "checkmark")
+                        case .failed:
+                            Label("Couldn't Save Cover", systemImage: "exclamationmark.triangle")
+                        }
+                    }
+                    .font(.caption)
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 8)
+                    .conditionalGlassEffect()
+                    .allowsHitTesting(false)
+                    .transition(.opacity)
+                }
             }
             .foregroundStyle(infoStyle)
             .padding(.top, topSafeArea + 8)
             .animation(.default, value: viewModel.isLoadingPage)
+            .animation(.default, value: viewModel.coverNotice)
         }
         .overlay(alignment: .bottom) {
             if userConfig.readerAlwaysShowProgress && viewModel.document != nil {
@@ -346,6 +363,12 @@ struct PDFReaderView: View {
                             }
                         }
                         
+                        Button {
+                            viewModel.setCoverFromVisibleArea()
+                        } label: {
+                            Label("Use Visible Area as Cover", systemImage: "photo")
+                        }
+
                         #if DEBUG
                         Toggle(isOn: $viewModel.showTextBoxes) {
                             Label("Show Text Boxes", systemImage: "rectangle.dashed")

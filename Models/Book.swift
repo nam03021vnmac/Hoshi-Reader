@@ -32,7 +32,7 @@ nonisolated struct BookMetadata: Codable, Identifiable, Hashable {
     let author: String?
     let epub: String?
     let pdf: String?
-    let cover: String?
+    var cover: String?
     let folder: String
     var lastAccess: Date
     var renamedTitle: String?

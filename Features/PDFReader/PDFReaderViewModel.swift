@@ -21,10 +21,15 @@ enum PDFReaderSheet: Identifiable {
     var id: Self { self }
 }
 
+enum PDFCoverNotice {
+    case saved
+    case failed
+}
+
 @Observable
 @MainActor
 final class PDFReaderViewModel {
-    let book: BookMetadata
+    private(set) var book: BookMetadata
     let rootURL: URL?
     let document: PDFDocument?
     let info: PDFInfo?
@@ -37,6 +42,7 @@ final class PDFReaderViewModel {
     /// (done, total) while the whole book is being recognized
     var bookOCRProgress: (done: Int, total: Int)?
     var ocrError: String?
+    var coverNotice: PDFCoverNotice?
     var showTextBoxes = false {
         didSet { updateTextBoxes() }
     }
@@ -63,6 +69,7 @@ final class PDFReaderViewModel {
     @ObservationIgnored private var latestTapToken: UUID?
     @ObservationIgnored private var saveTask: Task<Void, Never>?
     @ObservationIgnored private var bookOCRTask: Task<Void, Never>?
+    @ObservationIgnored private var coverNoticeTask: Task<Void, Never>?
     @ObservationIgnored private var ocrConfigurationKey: String?
     // the model prompt opens by itself at most once per reader session
     @ObservationIgnored private var ocrPromptShown = false
@@ -72,10 +79,7 @@ final class PDFReaderViewModel {
     }
     
     var coverURL: URL? {
-        guard let rootURL, let cover = book.cover else {
-            return nil
-        }
-        return rootURL.appendingPathComponent(cover)
+        book.coverURL
     }
     
     init(book: BookMetadata) {
@@ -513,6 +517,65 @@ final class PDFReaderViewModel {
         }
     }
     
+    // MARK: cover
+
+    /// Saves the part of the page in the middle of the screen that's visible as the book's cover,
+    /// e.g. the front of a dust jacket scanned as one wide page
+    func setCoverFromVisibleArea() {
+        guard let pdfView, let document, let rootURL, let pdf = book.pdf,
+              let page = pdfView.page(for: CGPoint(x: pdfView.bounds.midX, y: pdfView.bounds.midY), nearest: true) else {
+            return
+        }
+        let region = pdfView.convert(pdfView.bounds, to: page).intersection(page.bounds(for: .cropBox))
+        guard !region.isNull, region.width >= 1, region.height >= 1 else {
+            return
+        }
+        let pageIndex = document.index(for: page)
+        let pdfURL = rootURL.appendingPathComponent(pdf)
+        let folder = book.folder
+        // a new name each time, covers are cached by path
+        let fileName = "cover-\(UUID().uuidString.prefix(8).lowercased()).jpg"
+
+        Task {
+            // its own document, the PDFView is drawing the shared one on the main thread
+            let path = await Task.detached {
+                guard let page = PDFDocument(url: pdfURL)?.page(at: pageIndex) else {
+                    return nil as String?
+                }
+                return try? PDFImporter.writeCover(page, region: region, folder: folder, fileName: fileName)
+            }.value
+
+            var saved = false
+            if let path {
+                let oldCoverURL = book.coverURL
+                var metadata = BookStorage.loadMetadata(root: rootURL) ?? book
+                metadata.cover = path
+                if (try? BookStorage.saveMetadata(metadata, inside: rootURL)) != nil {
+                    book.cover = path
+                    if let oldCoverURL, oldCoverURL.deletingLastPathComponent().standardizedFileURL == rootURL.standardizedFileURL {
+                        try? FileManager.default.removeItem(at: oldCoverURL)
+                    }
+                    saved = true
+                } else {
+                    try? FileManager.default.removeItem(at: rootURL.appendingPathComponent(fileName))
+                }
+            }
+            showCoverNotice(saved ? .saved : .failed)
+        }
+    }
+
+    private func showCoverNotice(_ notice: PDFCoverNotice) {
+        coverNoticeTask?.cancel()
+        coverNotice = notice
+        coverNoticeTask = Task {
+            try? await Task.sleep(for: .seconds(1.5))
+            guard !Task.isCancelled else {
+                return
+            }
+            coverNotice = nil
+        }
+    }
+
     func jump(to index: Int) {
         let target = min(max(index, 0), pageCount - 1)
         guard let document, let page = document.page(at: target) else {
