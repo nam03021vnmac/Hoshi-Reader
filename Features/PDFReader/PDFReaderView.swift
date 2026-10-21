@@ -120,6 +120,9 @@ struct PDFReaderView: View {
                                 }
                             },
                             onPageTap: { index, pagePoint, viewPoint in
+                                guard !viewModel.isChoosingCover else {
+                                    return
+                                }
                                 Task {
                                     if await !viewModel.handlePageTap(pageIndex: index, point: pagePoint) {
                                         handleTapOutside(at: viewPoint, screenHeight: geometry.size.height)
@@ -127,6 +130,9 @@ struct PDFReaderView: View {
                                 }
                             },
                             onTapOutside: { viewPoint in
+                                guard !viewModel.isChoosingCover else {
+                                    return
+                                }
                                 handleTapOutside(at: viewPoint, screenHeight: geometry.size.height)
                             },
                             onViewportChanged: {
@@ -180,7 +186,23 @@ struct PDFReaderView: View {
                             )
                             .zIndex(Double(100 + (viewModel.popups.firstIndex(where: { $0.id == popupId }) ?? 0)))
                         }
+
+                        if viewModel.isChoosingCover {
+                            PDFCoverCropOverlay(
+                                topPadding: topSafeArea,
+                                bottomPadding: bottomSafeArea > 0 ? bottomSafeArea : 8,
+                                onCancel: {
+                                    viewModel.isChoosingCover = false
+                                },
+                                onSave: { box in
+                                    viewModel.setCover(from: box)
+                                }
+                            )
+                            .transition(.opacity)
+                            .zIndex(200)
+                        }
                     }
+                    .animation(.default.speed(2), value: viewModel.isChoosingCover)
                     .frame(width: geometry.size.width, height: geometry.size.height)
                 }
                 // pages use the whole screen, the chrome floats on top
@@ -364,9 +386,12 @@ struct PDFReaderView: View {
                         }
                         
                         Button {
-                            viewModel.setCoverFromVisibleArea()
+                            viewModel.beginChoosingCover()
+                            withAnimation(.default.speed(2)) {
+                                focusMode = true
+                            }
                         } label: {
-                            Label("Use Visible Area as Cover", systemImage: "photo")
+                            Label("Choose Cover…", systemImage: "crop")
                         }
 
                         #if DEBUG
