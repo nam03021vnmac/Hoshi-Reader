@@ -17,20 +17,38 @@ final class ReaderWindow: NSObject, NSWindowDelegate {
     private var onDismiss: (() -> Void)?
 
     func present<Content: View>(@ViewBuilder content: () -> Content, onDismiss: @escaping () -> Void) {
+        let dismiss: () -> Void = { [weak self] in self?.dismiss() }
+        let host = NSHostingController(rootView: AnyView(content().environment(\.dismissReader, dismiss)))
+        // the window keeps the frame set up below; the reader lays out once at that size
+        // instead of at a throwaway size that loads the chapter twice
+        host.sizingOptions = []
+
         if let window {
+            // another book was picked in the library while one is open: show it here instead
+            self.onDismiss = onDismiss
+            host.view.frame = NSRect(origin: .zero, size: window.contentRect(forFrameRect: window.frame).size)
+            window.contentViewController = host
             window.makeKeyAndOrderFront(nil)
             return
         }
 
-        let dismiss: () -> Void = { [weak self] in self?.dismiss() }
-        let host = NSHostingController(rootView: AnyView(content().environment(\.dismissReader, dismiss)))
-        let window = NSWindow(contentViewController: host)
-        window.styleMask = [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView]
+        let visibleHeight = NSScreen.main?.visibleFrame.height ?? 1000
+        let window = NSWindow(
+            contentRect: NSRect(x: 0, y: 0, width: 820, height: min(1000, visibleHeight)),
+            styleMask: [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView],
+            backing: .buffered,
+            defer: true
+        )
         window.titlebarAppearsTransparent = true
         window.titleVisibility = .hidden
         window.isReleasedWhenClosed = false
-        window.setContentSize(NSSize(width: 820, height: 1000))
+        window.contentMinSize = NSSize(width: 420, height: 520)
+        if !window.setFrameUsingName("ReaderWindow") {
+            window.center()
+        }
         window.setFrameAutosaveName("ReaderWindow")
+        host.view.frame = NSRect(origin: .zero, size: window.contentRect(forFrameRect: window.frame).size)
+        window.contentViewController = host
         window.delegate = self
 
         self.window = window

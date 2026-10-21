@@ -265,7 +265,7 @@ nonisolated enum InkLayout {
                     boundary += cell
                 }
                 // prefer the estimate when the ink can't tell (short lines, touching glyphs)
-                let score = (count > 0 ? total / Double(count) : 0) + abs(Double(step)) * 0.01
+                let score = (count > 0 ? total / Double(count) : 0) + Swift.abs(Double(step)) * 0.01
                 if score < best.score {
                     best = (score, cell, offset)
                 }

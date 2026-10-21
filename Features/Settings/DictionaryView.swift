@@ -48,7 +48,7 @@ struct DictionaryView: View {
     }
     
     var body: some View {
-        List {
+        SettingsList {
             Section {
                 Button {
                     showDownloadConfirmation = true
@@ -71,6 +71,7 @@ struct DictionaryView: View {
                 }
             } footer: {
                 Text("Yomitan term, frequency and pitch dictionaries (.zip) are supported", tableName: "Dictionaries")
+                    .settingsFooter()
             }
             
             if !dictionaryManager.kanjiDictionaries.isEmpty {
@@ -266,7 +267,7 @@ struct DictionarySettingsView: View {
     }
     
     var body: some View {
-        List {
+        SettingsList {
             Section {
                 Toggle(isOn: Bindable(userConfig).scanNonJapaneseText) {
                     Text("Scan Non-Japanese Text", tableName: "Dictionaries")

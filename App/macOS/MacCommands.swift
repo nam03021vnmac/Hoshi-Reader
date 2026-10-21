@@ -12,7 +12,18 @@ import SwiftUI
 /// Menu bar commands. Books and Dictionary route through `ShortcutHandler`, the same
 /// path the iOS home-screen shortcuts use; Import Books… is handled by the bookshelf.
 struct MacCommands: Commands {
+    static let settingsWindowID = "settings"
+
+    @Environment(\.openWindow) private var openWindow
+
     var body: some Commands {
+        CommandGroup(replacing: .appSettings) {
+            Button("Settings…") {
+                openWindow(id: Self.settingsWindowID)
+            }
+            .keyboardShortcut(",", modifiers: .command)
+        }
+
         CommandGroup(replacing: .newItem) {
             Button("Import Books…") {
                 NotificationCenter.default.post(name: .importBooks, object: nil)
@@ -33,6 +44,40 @@ struct MacCommands: Commands {
 
             Divider()
         }
+
+        // sent to whichever reader has the keyboard: a PDF zooms, an EPUB changes its font size
+        CommandGroup(before: .toolbar) {
+            Button("Zoom In") {
+                NSApp.sendAction(#selector(ReaderZooming.zoomIn(_:)), to: nil, from: nil)
+            }
+            .keyboardShortcut("+", modifiers: .command)
+
+            Button("Zoom Out") {
+                NSApp.sendAction(#selector(ReaderZooming.zoomOut(_:)), to: nil, from: nil)
+            }
+            .keyboardShortcut("-", modifiers: .command)
+
+            Button("Zoom to Fit") {
+                NSApp.sendAction(#selector(ReaderZooming.zoomToFit(_:)), to: nil, from: nil)
+            }
+            .keyboardShortcut("0", modifiers: .command)
+
+            Divider()
+        }
+
+        // the iOS Settings tab links here; a Mac app keeps it in the Help menu
+        CommandGroup(replacing: .help) {
+            Button("Report an Issue") {
+                Platform.open(URL(string: "https://github.com/Manhhao/Hoshi-Reader/issues")!)
+            }
+        }
     }
+}
+
+/// The zoom actions the View menu sends up the responder chain.
+@objc protocol ReaderZooming {
+    func zoomIn(_ sender: Any?)
+    func zoomOut(_ sender: Any?)
+    @objc optional func zoomToFit(_ sender: Any?)
 }
 #endif

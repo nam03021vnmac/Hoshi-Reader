@@ -18,7 +18,7 @@ struct AudioView: View {
     
     var body: some View {
         @Bindable var userConfig = userConfig
-        List {
+        SettingsList {
             Section("Sources") {
                 ForEach($userConfig.audioSources) { $source in
                     Toggle(isOn: $source.isEnabled) {
@@ -71,6 +71,7 @@ struct AudioView: View {
                 Text("Add Source")
             } footer: {
                 Text("Yomitan JSON audio sources are supported")
+                    .settingsFooter()
             }
             
             Section {
@@ -98,6 +99,7 @@ struct AudioView: View {
                 Text("Local Audio")
             } footer: {
                 Text("Import a local audio database for offline dictionary audio. The local audio source is automatically added when enabled.")
+                    .settingsFooter()
             }
         }
         .fileImporter(

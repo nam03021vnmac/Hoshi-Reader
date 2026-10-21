@@ -1,5 +1,5 @@
 {
-  "originHash" : "fbe55ae817384077be71699bea1e4bdcfc4917ab662cf210394409e0871ac94a",
+  "originHash" : "317bdfbcd297988781038ec2924fe8f419ee58ed30c80b6c089e1fc6b94976ed",
   "pins" : [
     {
       "identity" : "aexml",
@@ -8,15 +8,6 @@
       "state" : {
         "revision" : "db806756c989760b35108146381535aec231092b",
         "version" : "4.7.0"
-      }
-    },
-    {
-      "identity" : "hoshidicts",
-      "kind" : "remoteSourceControl",
-      "location" : "https://github.com/Manhhao/hoshidicts.git",
-      "state" : {
-        "branch" : "main",
-        "revision" : "a28d82eb0f169b8ceff79e8c99ffe0b96709ab27"
       }
     },
     {

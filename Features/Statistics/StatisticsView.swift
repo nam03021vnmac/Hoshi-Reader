@@ -66,6 +66,10 @@ struct StatisticsView: View {
                 }
             }
             .listStyle(.insetGrouped)
+            #if os(macOS)
+            // let the translucent window show through
+            .scrollContentBackground(.hidden)
+            #endif
             .navigationTitle("Statistics")
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {

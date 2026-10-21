@@ -414,7 +414,7 @@ struct ReaderView: View {
                             canSeekText: viewModel.hasSasayakiCue,
                             onDoubleTapText: handleDoubleTapText
                         )
-                        .id(WebViewState(
+                        .readerLayoutID(WebViewState(
                             verticalWriting: userConfig.verticalWriting,
                             fontSize: userConfig.fontSize,
                             selectedFont: userConfig.selectedFont,
@@ -482,7 +482,7 @@ struct ReaderView: View {
                             canSeekText: viewModel.hasSasayakiCue,
                             onDoubleTapText: handleDoubleTapText
                         )
-                        .id(WebViewState(
+                        .readerLayoutID(WebViewState(
                             verticalWriting: userConfig.verticalWriting,
                             fontSize: userConfig.fontSize,
                             selectedFont: userConfig.selectedFont,
@@ -724,15 +724,18 @@ struct ReaderView: View {
             case .appearance:
                 AppearanceView(userConfig: userConfig, showDismiss: true)
                     .presentationDetents([.medium])
+                    .sheetFrame(minHeight: 600)
                     .preferredColorScheme(readerTheme)
             case .contents:
                 ContentsSheet(viewModel: viewModel, readerTheme: readerTheme) { url in
                     viewModel.activeSheet = nil
                     imageURL = url
                 }
+                .sheetFrame(minHeight: 600)
             case .statistics:
                 StatisticsSheet(viewModel: viewModel)
                     .presentationDetents([.medium, .large])
+                    .sheetFrame()
             case .sasayaki:
                 SasayakiSheet(player: viewModel.sasayakiPlayer, onImportAudio: { url in
                     try viewModel.importSasayakiAudio(from: url)
@@ -740,6 +743,7 @@ struct ReaderView: View {
                     viewModel.activeSheet = nil
                 }
                 .presentationDetents([.medium])
+                .sheetFrame()
             }
         }
         .task(id: viewModel.isTracking) {
@@ -770,6 +774,14 @@ struct ReaderView: View {
                 viewModel.isPaused = false
             } else {
                 viewModel.isPaused = true
+            }
+        }
+        .onEscapeKey {
+            if imageURL != nil {
+                imageURL = nil
+            } else if !viewModel.popups.isEmpty {
+                viewModel.clearSelection()
+                viewModel.closePopups()
             }
         }
         .onChange(of: readerTextColor) { _, hex in viewModel.bridge.send(.updateTextColor(hex)) }

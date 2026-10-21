@@ -10,7 +10,7 @@ import SwiftUI
 
 struct AdvancedView: View {
     var body: some View {
-        List {
+        SettingsList {
             Section {
                 NavigationLink {
                     AudioView()

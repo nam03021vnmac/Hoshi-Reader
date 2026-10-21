@@ -409,7 +409,7 @@ final class PDFReaderViewModel {
         }
         
         closePopups()
-        let rect = pdfView.convert(result.firstGlyphRect, from: pdfPage)
+        let rect = pdfView.topLeftRect(for: result.firstGlyphRect, from: pdfPage)
         let selection = SelectionData(text: result.text, sentence: result.sentence, rect: rect, normalizedOffset: nil, clozeOffset: result.clozeOffset)
         let config = UserConfig.shared
         guard let matched = handleTextSelection(selection, maxResults: config.maxResults, scanLength: config.scanLength, isVertical: result.isVertical, isFullWidth: config.popupFullWidth) else {

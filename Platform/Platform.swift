@@ -80,6 +80,21 @@ enum Platform {
         #endif
     }
 
+    // MARK: - Animation
+
+    /// Animates view property changes, such as fading a web view in with `alpha`.
+    static func animate(withDuration duration: TimeInterval, _ animations: @escaping () -> Void) {
+        #if os(macOS)
+        NSAnimationContext.runAnimationGroup { context in
+            context.duration = duration
+            context.allowsImplicitAnimation = true
+            animations()
+        }
+        #else
+        UIView.animate(withDuration: duration, animations: animations)
+        #endif
+    }
+
     // MARK: - Pasteboard
 
     static func pasteboardData(forType type: String) -> Data? {

@@ -18,7 +18,7 @@ struct AboutView: View {
     }
     
     var body: some View {
-        List {
+        SettingsList {
             Section {
                 HStack {
                     Text("Version")

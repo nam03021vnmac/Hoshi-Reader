@@ -13,7 +13,7 @@ struct PDFSettingsView: View {
 
     var body: some View {
         @Bindable var userConfig = userConfig
-        List {
+        SettingsList {
             Section("Display") {
                 Picker("Page Mode", selection: $userConfig.pdfDisplayMode) {
                     Text("Paged").tag(PDFDisplayMode.paged)
@@ -36,6 +36,7 @@ struct PDFSettingsView: View {
                 Text("Text Recognition")
             } footer: {
                 Text("Auto recognizes pages without a usable text layer. Always ignores embedded text. Prefetched pages are recognized ahead of time while reading.")
+                    .settingsFooter()
             }
 
             Section {
@@ -46,6 +47,7 @@ struct PDFSettingsView: View {
                 Text("OCR Model")
             } footer: {
                 Text("Used for scanned pages without a text layer. Recognized pages are saved, so each page is only recognized once.")
+                    .settingsFooter()
             }
 
             #if DEBUG

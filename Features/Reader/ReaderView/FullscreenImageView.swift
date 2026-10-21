@@ -19,6 +19,12 @@ struct FullscreenImageView: View {
                 .ignoresSafeArea()
                 .background(backgroundColor.ignoresSafeArea())
                 .toolbar {
+                    #if os(macOS)
+                    // the buttons would otherwise sit next to the window controls
+                    if #available(macOS 26, *) {
+                        ToolbarSpacer(.flexible, placement: .topBarTrailing)
+                    }
+                    #endif
                     ToolbarItem(placement: .topBarTrailing) {
                         ShareLink(item: url)
                     }

@@ -18,7 +18,7 @@ struct SyncView: View {
     
     var body: some View {
         @Bindable var userConfig = userConfig
-        List {
+        SettingsList {
             Section {
                 Toggle("Enable", isOn: $userConfig.enableSync)
             } footer: {
@@ -29,15 +29,20 @@ struct SyncView: View {
                         Text("1. After the initial setup, create another **OAuth client ID** in the same project.")
                         Text("2. Select **iOS** as the **Application type** and set the **Bundle ID** to '**de.manhhao.hoshi**'.")
                         Text("3. Paste the **Client ID** in the textbox below and press '**Connect Google Drive**'.")
+                        #if os(macOS)
+                        Text("4. You can sync individual books by right-clicking and selecting '**Sync**'.")
+                        #else
                         Text("4. You can sync individual books by long-pressing and selecting '**Sync**'.")
+                        #endif
                         Text("**[More...](https://github.com/Manhhao/Hoshi-Reader/blob/develop/TTUSYNC.md)**")
                     }
                 }
+                .settingsFooter()
             }
             
             if userConfig.enableSync {
                 Section("Client ID") {
-                    TextField("Required", text: $userConfig.googleClientId)
+                    TextField("Client ID", text: $userConfig.googleClientId, prompt: Text("Required"))
                         .disabled(isAuthenticated)
                         .opacity(isAuthenticated ? 0.6 : 1)
                 }

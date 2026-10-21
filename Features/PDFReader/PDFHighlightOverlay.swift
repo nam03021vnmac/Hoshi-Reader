@@ -96,18 +96,17 @@ struct PDFTextBoxes {
     }
 }
 
-#if os(iOS)
 final class PDFHighlightOverlayProvider: NSObject, PDFPageOverlayViewProvider {
     weak var pdfView: PDFView?
     private var overlays: [Int: PDFHighlightOverlayView] = [:]
     private var highlight: (pageIndex: Int, rects: [CGRect])?
     private var boxes: [Int: PDFTextBoxes] = [:]
 
-    var color: UIColor = .tintColor {
+    var color: PlatformColor = .tintColor {
         didSet { overlays.values.forEach { $0.color = color } }
     }
 
-    func pdfView(_ view: PDFView, overlayViewFor page: PDFPage) -> UIView? {
+    func pdfView(_ view: PDFView, overlayViewFor page: PDFPage) -> PlatformView? {
         let overlay = PDFHighlightOverlayView()
         overlay.pdfView = view
         overlay.page = page
@@ -123,7 +122,7 @@ final class PDFHighlightOverlayProvider: NSObject, PDFPageOverlayViewProvider {
         return overlay
     }
 
-    func pdfView(_ pdfView: PDFView, willEndDisplayingOverlayView overlayView: UIView, for page: PDFPage) {
+    func pdfView(_ pdfView: PDFView, willEndDisplayingOverlayView overlayView: PlatformView, for page: PDFPage) {
         guard let index = pdfView.document?.index(for: page), index != NSNotFound else {
             return
         }
@@ -159,4 +158,3 @@ final class PDFHighlightOverlayProvider: NSObject, PDFPageOverlayViewProvider {
         overlays.values.forEach { $0.setNeedsLayout() }
     }
 }
-#endif

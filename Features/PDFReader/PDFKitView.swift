@@ -14,6 +14,29 @@ struct PDFKitViewState: Hashable {
     var rightToLeft: Bool
 }
 
+extension PDFView {
+    /// Converts a point in the view to coordinates with the origin at the top left, as SwiftUI
+    /// uses. macOS views put the origin at the bottom left.
+    func topLeftPoint(_ point: CGPoint) -> CGPoint {
+        #if os(macOS)
+        isFlipped ? point : CGPoint(x: point.x, y: bounds.height - point.y)
+        #else
+        point
+        #endif
+    }
+
+    /// Converts a rect on `page` to view coordinates with the origin at the top left.
+    func topLeftRect(for rect: CGRect, from page: PDFPage) -> CGRect {
+        let converted = convert(rect, from: page)
+        #if os(macOS)
+        if !isFlipped {
+            return CGRect(x: converted.minX, y: bounds.height - converted.maxY, width: converted.width, height: converted.height)
+        }
+        #endif
+        return converted
+    }
+}
+
 #if os(iOS)
 /// PDFKit centers pages inside the safe area, so hiding the status bar with the reader controls moved the page.
 /// The reader is full screen and the controls float on top, so the safe area is ignored.
