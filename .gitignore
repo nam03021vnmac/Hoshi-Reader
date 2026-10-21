@@ -70,3 +70,4 @@ Scripts/ocr/build/
 Scripts/ocr/harness/.build/
 Scripts/ocr/harness/.swiftpm/
 Scripts/ocr/__pycache__/
+build/
