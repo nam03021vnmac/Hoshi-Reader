@@ -29,6 +29,16 @@ ENTITLEMENTS="$ROOT/App/macOS/HoshiReader-macOS.entitlements"
 DERIVED="$OUT/DerivedData"
 STAGING="$OUT/dmg"
 
+# xcodebuild needs full Xcode; when xcode-select points at the Command Line Tools, use Xcode.app.
+if [[ -z "${DEVELOPER_DIR:-}" && "$(xcode-select -p)" == */CommandLineTools ]]; then
+  if [[ -d /Applications/Xcode.app ]]; then
+    export DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer
+  else
+    echo "error: xcodebuild requires Xcode; install it or run: sudo xcode-select -s <Xcode.app>" >&2
+    exit 1
+  fi
+fi
+
 echo "==> Building $SCHEME (Release)"
 xcodebuild -project "$ROOT/Hoshi Reader.xcodeproj" -scheme "$SCHEME" -configuration Release \
   -destination 'generic/platform=macOS' -derivedDataPath "$DERIVED" \
