@@ -167,6 +167,16 @@
         }
       }
     },
+    "%@, %@, %lld,%lld %lld×%lld" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@, %2$@, %3$lld,%4$lld %5$lld×%6$lld"
+          }
+        }
+      }
+    },
     "%lld" : {
       "comment" : "Context: Formatter-only value in reader statistics, progress rows, or setting value labels. Surrounding UI provides the label; keep placeholders, Markdown, and percent signs unchanged.",
       "localizations" : {
@@ -682,6 +692,9 @@
         }
       }
     },
+    "Book" : {
+
+    },
     "Books" : {
       "comment" : "Context: Bookshelf and shelf management. Surrounding UI includes book lists, empty states, shelf actions, sort controls, and book context-menu confirmations.",
       "localizations" : {
@@ -789,6 +802,9 @@
           }
         }
       }
+    },
+    "Choose Cover…" : {
+
     },
     "Choose the **.srt** and press **Match**. Matching only has to be done once." : {
       "comment" : "Context: Sasayaki audiobook feature screens. Surrounding UI includes setup instructions, SRT/audio matching, playback controls, command center options, and Sasayaki theme settings. Preserve Markdown and product names.",
@@ -987,6 +1003,12 @@
         }
       }
     },
+    "Couldn't Save Cover" : {
+
+    },
+    "Cover Updated" : {
+
+    },
     "Covers" : {
 
     },
@@ -1161,6 +1183,9 @@
         }
       }
     },
+    "Detection" : {
+
+    },
     "Determines if statistics will be merged entry by entry or replaced completely on a sync." : {
       "comment" : "Context: Settings > Syncing. Surrounding UI explains Google Drive setup, then shows sync direction, auto-sync, Client ID, status, sign-out, and connect controls. Preserve product names and Markdown.",
       "localizations" : {
@@ -1171,6 +1196,9 @@
           }
         }
       }
+    },
+    "Developer" : {
+
     },
     "Dictionaries" : {
       "comment" : "Context: Settings > Backup. Surrounding UI offers backup/restore actions for books and dictionaries, with restore overwrite warnings.",
@@ -1295,6 +1323,9 @@
           }
         }
       }
+    },
+    "Drag the box over the cover" : {
+
     },
     "Drop to Import" : {
 
@@ -1761,6 +1792,9 @@
         }
       }
     },
+    "Lines (%lld)" : {
+
+    },
     "Listen to audiobooks and read along with highlighted text." : {
       "comment" : "Context: Sasayaki audiobook feature screens. Surrounding UI includes setup instructions, SRT/audio matching, playback controls, command center options, and Sasayaki theme settings. Preserve Markdown and product names.",
       "localizations" : {
@@ -1928,6 +1962,9 @@
         }
       }
     },
+    "Memory footprint" : {
+
+    },
     "Merge" : {
       "localizations" : {
         "zh-Hans" : {
@@ -1957,7 +1994,6 @@
     },
     "Model" : {
       "comment" : "Context: Shared Hoshi Reader label or action. Surrounding UI may be a settings row, alert button, toolbar item, or reader context menu.",
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -2170,6 +2206,9 @@
         }
       }
     },
+    "OCR Test" : {
+
+    },
     "of %lld days read" : {
       "localizations" : {
         "en" : {
@@ -2263,6 +2302,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "页"
+          }
+        }
+      }
+    },
+    "Page %lld of %lld" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Page %1$lld of %2$lld"
           }
         }
       }
@@ -2370,6 +2419,9 @@
         }
       }
     },
+    "Peak footprint (process)" : {
+
+    },
     "Period" : {
 
     },
@@ -2466,6 +2518,9 @@
         }
       }
     },
+    "Reading Order (%lld characters)" : {
+
+    },
     "Reading Shelf" : {
       "comment" : "Context: Bookshelf and shelf management. Surrounding UI includes book lists, empty states, shelf actions, sort controls, and book context-menu confirmations.",
       "localizations" : {
@@ -2504,6 +2559,9 @@
           }
         }
       }
+    },
+    "Recognition" : {
+
     },
     "Recognizes text on every page without a text layer, so lookups are instant. This can take a while." : {
       "comment" : "Context: PDF reader. Surrounding UI is the reader menu, overlays, sheets, or alerts for PDF books.",
@@ -2554,6 +2612,9 @@
           }
         }
       }
+    },
+    "Render" : {
+
     },
     "Replace" : {
       "localizations" : {
@@ -2636,6 +2697,9 @@
           }
         }
       }
+    },
+    "Run OCR" : {
+
     },
     "Sasayaki" : {
       "comment" : "Context: Sasayaki audiobook feature screens. Surrounding UI includes setup instructions, SRT/audio matching, playback controls, command center options, and Sasayaki theme settings. Preserve Markdown and product names.",
@@ -2801,6 +2865,9 @@
     "Show Control Bar" : {
 
     },
+    "Show Glyph Cells" : {
+
+    },
     "Show More" : {
 
     },
@@ -2871,6 +2938,9 @@
           }
         }
       }
+    },
+    "Show Text Boxes" : {
+
     },
     "Show Title" : {
       "comment" : "Context: Settings > Appearance. Surrounding UI is a grouped form for reader theme, text, layout, display, and popup controls.",
@@ -3334,6 +3404,9 @@
         }
       }
     },
+    "Timings" : {
+
+    },
     "Title" : {
       "comment" : "Context: Bookshelf and shelf management. Surrounding UI includes book lists, empty states, shelf actions, sort controls, and book context-menu confirmations.",
       "localizations" : {
@@ -3380,6 +3453,9 @@
         }
       }
     },
+    "Total" : {
+
+    },
     "Total Time" : {
 
     },
@@ -3424,6 +3500,9 @@
           }
         }
       }
+    },
+    "Use as Cover" : {
+
     },
     "Use Manga Model for This Book" : {
       "comment" : "Context: PDF reader. Surrounding UI is the reader menu, overlays, sheets, or alerts for PDF books.",
