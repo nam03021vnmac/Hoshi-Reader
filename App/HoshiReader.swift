@@ -103,6 +103,16 @@ struct HoshiReaderApp: App {
         Window("Settings", id: MacCommands.settingsWindowID) {
             MacSettingsView()
                 .frame(minWidth: 720, minHeight: 520)
+                // AppKit drops a toolbar with no items, so screens without buttons of their own
+                // would get a shorter titlebar than Dictionaries and shift up. An invisible item
+                // keeps the toolbar, and its height, on every screen.
+                .toolbar {
+                    ToolbarItem(placement: .principal) {
+                        Color.clear
+                            .frame(width: 1, height: 1)
+                            .accessibilityHidden(true)
+                    }
+                }
                 .translucentWindowBackground()
                 .environment(userConfig)
         }
