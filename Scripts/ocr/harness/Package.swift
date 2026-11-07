@@ -13,5 +13,9 @@ let package = Package(
             dependencies: [.product(name: "onnxruntime", package: "onnxruntime-swift-package-manager")],
             swiftSettings: [.defaultIsolation(MainActor.self), .enableUpcomingFeature("NonisolatedNonsendingByDefault"), .enableUpcomingFeature("InferIsolatedConformances"), .enableUpcomingFeature("MemberImportVisibility")]
         ),
+        .executableTarget(
+            name: "UpscaleHarness",
+            swiftSettings: [.defaultIsolation(MainActor.self), .enableUpcomingFeature("NonisolatedNonsendingByDefault"), .enableUpcomingFeature("InferIsolatedConformances"), .enableUpcomingFeature("MemberImportVisibility")]
+        ),
     ]
 )
