@@ -71,3 +71,7 @@ Scripts/ocr/harness/.build/
 Scripts/ocr/harness/.swiftpm/
 Scripts/ocr/__pycache__/
 build/
+
+# Upscale model tooling (Scripts/upscale)
+Scripts/upscale/.venv/
+Scripts/upscale/__pycache__/
