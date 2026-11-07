@@ -78,7 +78,7 @@ nonisolated enum OCRModelManifest {
         case .v6Manga: [
             OCRModelFile(name: "det.onnx", source: .remote(huggingFace("PP-OCRv6_small_det_onnx", "28fe5895c24fd108c19eb3e8479f4ab385fbfc62")),
                          sha256: "d73e0058b7a8086bbd57f3d10b8bcd4ff95363f67e06e2762b5e814fe9c9410e", bytes: 9880512),
-            OCRModelFile(name: "rec.onnx", source: .remote(huggingFace("PP-OCRv6_manga", "8ee29e094b6aac77dd067c70805438782fa16ab0",
+            OCRModelFile(name: "rec.onnx", source: .remote(huggingFace("PP-OCRv6_manga", "d090c421598eadd2e179ad62c29ff0767492072c",
                                                                        owner: "Kellenok", file: "rec/manga_rec_v0.2.onnx")),
                          sha256: "de12c84c63e62c80339e882e675983d886670dcb6f0147e1ed041afd6fa81888", bytes: 21167540),
             OCRModelFile(name: "dict.txt", source: .bundled("ppocrv6-manga-dict.txt"),
