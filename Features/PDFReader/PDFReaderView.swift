@@ -249,6 +249,19 @@ struct PDFReaderView: View {
                     .allowsHitTesting(false)
                     .transition(.opacity)
                 }
+                if viewModel.isUpscalingPage {
+                    HStack(spacing: 8) {
+                        ProgressView()
+                            .controlSize(.small)
+                        Text("Upscaling page…")
+                            .font(.caption)
+                    }
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 8)
+                    .conditionalGlassEffect()
+                    .allowsHitTesting(false)
+                    .transition(.opacity)
+                }
                 if let notice = viewModel.coverNotice {
                     Group {
                         switch notice {
@@ -269,6 +282,7 @@ struct PDFReaderView: View {
             .foregroundStyle(infoStyle)
             .padding(.top, topSafeArea + 8)
             .animation(.default, value: viewModel.isLoadingPage)
+            .animation(.default, value: viewModel.isUpscalingPage)
             .animation(.default, value: viewModel.coverNotice)
         }
         .overlay(alignment: .bottom) {
@@ -383,6 +397,13 @@ struct PDFReaderView: View {
                                     }
                                 }
                             }
+                        }
+                        
+                        Toggle(isOn: Binding(
+                            get: { viewModel.upscaleImages },
+                            set: { viewModel.setUpscaleImages($0) }
+                        )) {
+                            Label("Upscale Images", systemImage: "wand.and.stars")
                         }
                         
                         Button {
@@ -502,6 +523,10 @@ struct PDFReaderView: View {
         .onReceive(NotificationCenter.default.publisher(for: UIApplication.didEnterBackgroundNotification)) { _ in
             // progress is on disk per page, so it resumes where it stopped
             viewModel.cancelBookOCR()
+            viewModel.setUpscalingPaused(true)
+        }
+        .onReceive(NotificationCenter.default.publisher(for: UIApplication.willEnterForegroundNotification)) { _ in
+            viewModel.setUpscalingPaused(false)
         }
         .onReceive(NotificationCenter.default.publisher(for: UIApplication.willResignActiveNotification)) { _ in
             viewModel.saveBookmark()

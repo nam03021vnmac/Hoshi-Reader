@@ -166,6 +166,10 @@ class BookshelfViewModel {
             let bookURL = try BookStorage.getBooksDirectory().appendingPathComponent(book.folder)
             StatisticsStorage.archive(book)
             try BookStorage.delete(at: bookURL)
+            let folder = book.folder
+            Task.detached(priority: .utility) {
+                UpscaleCache.removeBook(folder: folder)
+            }
             books.removeAll { $0.id == book.id }
             for i in shelves.indices {
                 shelves[i].bookIds.removeAll { $0 == book.id }

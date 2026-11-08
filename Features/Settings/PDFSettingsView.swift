@@ -10,6 +10,13 @@ import SwiftUI
 
 struct PDFSettingsView: View {
     @Environment(UserConfig.self) private var userConfig
+    @State private var upscaleCacheBytes: Int64 = 0
+
+    private func refreshUpscaleCacheSize() async {
+        upscaleCacheBytes = await Task.detached(priority: .utility) {
+            UpscaleCache.totalBytes()
+        }.value
+    }
 
     var body: some View {
         @Bindable var userConfig = userConfig
@@ -31,11 +38,10 @@ struct PDFSettingsView: View {
                 }
                 
                 Stepper("Prefetch Pages: \(userConfig.pdfPrefetchPages)", value: $userConfig.pdfPrefetchPages, in: 0...5)
-                    .disabled(userConfig.pdfOCRMode == .off)
             } header: {
                 Text("Text Recognition")
             } footer: {
-                Text("Auto recognizes pages without a usable text layer. Always ignores embedded text. Prefetched pages are recognized ahead of time while reading.")
+                Text("Auto recognizes pages without a usable text layer. Always ignores embedded text. Prefetched pages are recognized and upscaled ahead of time while reading.")
             }
 
             Section {
@@ -46,6 +52,22 @@ struct PDFSettingsView: View {
                 Text("OCR Model")
             } footer: {
                 Text("Used for scanned pages without a text layer. Recognized pages are saved, so each page is only recognized once.")
+            }
+
+            Section {
+                Button("Clear Upscaled Pages", role: .destructive) {
+                    Task {
+                        await Task.detached(priority: .utility) {
+                            UpscaleCache.removeAll()
+                        }.value
+                        await refreshUpscaleCacheSize()
+                    }
+                }
+                .disabled(upscaleCacheBytes == 0)
+            } header: {
+                Text("Image Upscaling")
+            } footer: {
+                Text("Turn on Upscale Images for a book in the reader menu to sharpen its low-resolution pages. Pages are processed on this device and saved (\(ByteCountFormatter.string(fromByteCount: upscaleCacheBytes, countStyle: .file)) used), which uses more battery while reading new pages.")
             }
 
             #if DEBUG
@@ -59,6 +81,9 @@ struct PDFSettingsView: View {
         .navigationTitle("PDF")
         .onAppear {
             OCRModelStore.shared.refresh()
+        }
+        .task {
+            await refreshUpscaleCacheSize()
         }
     }
 }
