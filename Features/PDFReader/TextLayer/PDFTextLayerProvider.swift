@@ -74,6 +74,16 @@ actor PDFTextLayerProvider {
         flushInfo()
     }
 
+    /// Saved here because this copy of the info is what gets written to disk
+    func setUpscaleImages(_ upscaleImages: Bool) {
+        guard info.upscaleImages != upscaleImages else {
+            return
+        }
+        info.upscaleImages = upscaleImages
+        infoDirty = true
+        flushInfo()
+    }
+
     /// Non-ruby character count of a page, if its layer has been built before
     func characterCount(for pageIndex: Int) -> Int? {
         guard info.pageCharacterCounts.indices.contains(pageIndex) else {

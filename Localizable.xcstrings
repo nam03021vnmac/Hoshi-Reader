@@ -547,13 +547,13 @@
         }
       }
     },
-    "Auto recognizes pages without a usable text layer. Always ignores embedded text. Prefetched pages are recognized ahead of time while reading." : {
+    "Auto recognizes pages without a usable text layer. Always ignores embedded text. Prefetched pages are recognized and upscaled ahead of time while reading." : {
       "comment" : "Context: Settings > Advanced > PDF. Surrounding UI is a grouped form for PDF display and OCR (text recognition) options.",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "自动：仅识别没有可用文本层的页面。始终：忽略内嵌文本。预取的页面会在阅读时提前识别。"
+            "value" : "自动：仅识别没有可用文本层的页面。始终：忽略内嵌文本。预取的页面会在阅读时提前识别和放大。"
           }
         }
       }
@@ -849,6 +849,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "清除缓存?"
+          }
+        }
+      }
+    },
+    "Clear Upscaled Pages" : {
+      "comment" : "Context: Settings > Advanced > PDF. Surrounding UI is a grouped form for PDF display and OCR (text recognition) options.",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "清除已放大的页面"
           }
         }
       }
@@ -1547,6 +1558,17 @@
     },
     "Hours" : {
 
+    },
+    "Image Upscaling" : {
+      "comment" : "Context: Settings > Advanced > PDF. Surrounding UI is a grouped form for PDF display and OCR (text recognition) options.",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "图像放大"
+          }
+        }
+      }
     },
     "Import" : {
       "comment" : "Context: Shared Hoshi Reader label or action. Surrounding UI may be a settings row, alert button, toolbar item, or reader context menu.",
@@ -3459,6 +3481,17 @@
     "Total Time" : {
 
     },
+    "Turn on Upscale Images for a book in the reader menu to sharpen its low-resolution pages. Pages are processed on this device and saved (%@ used), which uses more battery while reading new pages." : {
+      "comment" : "Context: Settings > Advanced > PDF. Surrounding UI is a grouped form for PDF display and OCR (text recognition) options.",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "在阅读器菜单中为书籍开启“放大图像”，可使低分辨率页面更清晰。页面在此设备上处理并保存（已用 %@），阅读新页面时会消耗更多电量。"
+          }
+        }
+      }
+    },
     "Unshelved" : {
       "comment" : "Context: Bookshelf and shelf management. Surrounding UI includes book lists, empty states, shelf actions, sort controls, and book context-menu confirmations.",
       "localizations" : {
@@ -3486,6 +3519,28 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "若 Google Drive 无书籍数据，首次同步时将上传书籍。"
+          }
+        }
+      }
+    },
+    "Upscale Images" : {
+      "comment" : "Context: PDF reader. Surrounding UI is the reader menu, overlays, sheets, or alerts for PDF books.",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "放大图像"
+          }
+        }
+      }
+    },
+    "Upscaling page…" : {
+      "comment" : "Context: PDF reader. Surrounding UI is the reader menu, overlays, sheets, or alerts for PDF books.",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "正在放大页面…"
           }
         }
       }

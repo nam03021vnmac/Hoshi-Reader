@@ -26,6 +26,14 @@ enum PDFCoverNotice {
     case failed
 }
 
+private nonisolated struct ImageBox: @unchecked Sendable {
+    let image: CGImage?
+    
+    init(_ image: CGImage?) {
+        self.image = image
+    }
+}
+
 @Observable
 @MainActor
 final class PDFReaderViewModel {
@@ -39,6 +47,7 @@ final class PDFReaderViewModel {
     var isLoadingPage = false
     var forceOCR: Bool
     var isManga: Bool
+    var upscaleImages: Bool
     /// (done, total) while the whole book is being recognized
     var bookOCRProgress: (done: Int, total: Int)?
     var ocrError: String?
@@ -47,6 +56,8 @@ final class PDFReaderViewModel {
     var showTextBoxes = false {
         didSet { updateTextBoxes() }
     }
+    /// the visible page is being upscaled
+    var isUpscalingPage = false
     
     let maxSelectionLength = 16
     
@@ -64,7 +75,12 @@ final class PDFReaderViewModel {
     @ObservationIgnored private var jumpTarget: Int?
     
     @ObservationIgnored weak var pdfView: PDFView?
-    @ObservationIgnored var highlightProvider: PDFHighlightOverlayProvider?
+    @ObservationIgnored var highlightProvider: PDFHighlightOverlayProvider? {
+        didSet {
+            reloadUpscaledImages()
+            refreshUpscaling()
+        }
+    }
     @ObservationIgnored private var textLayers: PDFTextLayerProvider?
     @ObservationIgnored private var currentScan: (pageIndex: Int, first: PDFGlyphRef)?
     @ObservationIgnored private var latestTapToken: UUID?
@@ -74,6 +90,10 @@ final class PDFReaderViewModel {
     @ObservationIgnored private var ocrConfigurationKey: String?
     // the model prompt opens by itself at most once per reader session
     @ObservationIgnored private var ocrPromptShown = false
+    @ObservationIgnored private var upscaler: PageUpscaleProvider?
+    @ObservationIgnored private var upscaledURLs: [Int: URL] = [:]
+    // at most one page holds its full resolution image, while it's zoomed
+    @ObservationIgnored private var fullImagePage: Int?
     
     var pageCount: Int {
         info?.pageCount ?? 0
@@ -101,12 +121,16 @@ final class PDFReaderViewModel {
             self.pageIndex = 0
             self.forceOCR = false
             self.isManga = false
+            self.upscaleImages = false
             return
         }
         
         var info = BookStorage.loadPDFInfo(root: root)
         if info?.pageCount != document.pageCount {
+            let previous = info
             info = PDFInfo(pageCount: document.pageCount)
+            info?.isManga = previous?.isManga ?? false
+            info?.upscaleImages = previous?.upscaleImages ?? false
             try? BookStorage.save(info, inside: root, as: FileNames.pdfInfo)
         }
         
@@ -117,6 +141,7 @@ final class PDFReaderViewModel {
         self.pageIndex = min(max(saved, 0), document.pageCount - 1)
         self.forceOCR = info?.forceOCR ?? false
         self.isManga = info?.isManga ?? false
+        self.upscaleImages = info?.upscaleImages ?? false
         
         if let info, let pdf = book.pdf {
             let configuration = ocrConfiguration()
@@ -248,6 +273,7 @@ final class PDFReaderViewModel {
             return
         }
         bookOCRProgress = (0, pageCount)
+        setUpscalerBookOCRRunning(true)
         bookOCRTask = Task {
             do {
                 try await textLayers.ocrAllPages { [self] done, total in
@@ -264,6 +290,7 @@ final class PDFReaderViewModel {
             }
             bookOCRTask = nil
             bookOCRProgress = nil
+            setUpscalerBookOCRRunning(false)
         }
     }
     
@@ -272,6 +299,11 @@ final class PDFReaderViewModel {
     }
     
     func handleMemoryWarning() {
+        highlightProvider?.clearImages(keeping: pageIndex)
+        fullImagePage = nil
+        if let upscaler {
+            Task { await upscaler.handleMemoryWarning() }
+        }
         guard let textLayers else {
             return
         }
@@ -280,6 +312,7 @@ final class PDFReaderViewModel {
     
     func close() {
         bookOCRTask?.cancel()
+        stopUpscaling()
         guard let textLayers else {
             OCRModelStore.shared.releaseEngineSessions()
             return
@@ -338,11 +371,175 @@ final class PDFReaderViewModel {
             Task { await textLayers.prefetch(around: index, radius: radius, forward: forward) }
         }
         updateTextBoxes()
+        if let upscaler {
+            restoreFittedImage(leaving: index)
+            let radius = UserConfig.shared.pdfPrefetchPages
+            Task { await upscaler.focus(page: index, radius: radius, forward: forward) }
+        }
     }
     
     func viewportChanged() {
         closePopups()
+        loadFullImageIfZoomed()
     }
+    
+    // MARK: upscaling
+    
+    func setUpscaleImages(_ value: Bool) {
+        upscaleImages = value
+        if let textLayers {
+            Task { await textLayers.setUpscaleImages(value) }
+        }
+        refreshUpscaling()
+    }
+    
+    /// Starts from the view rather than init: SwiftUI can create view models it throws away, and those would keep working.
+    private func refreshUpscaling() {
+        guard upscaleImages else {
+            stopUpscaling()
+            return
+        }
+        guard upscaler == nil, let pdf = book.pdf, let rootURL else {
+            return
+        }
+        let provider = PageUpscaleProvider(
+            pdfURL: rootURL.appendingPathComponent(pdf),
+            bookFolder: book.folder,
+            pageCount: pageCount,
+            screenLongSide: Self.screenLongSide,
+            onImage: { [weak self] page, url in
+                self?.showUpscaledImage(page: page, url: url)
+            },
+            onBusy: { [weak self] busy in
+                self?.isUpscalingPage = busy
+            }
+        )
+        upscaler = provider
+        let page = pageIndex
+        let radius = UserConfig.shared.pdfPrefetchPages
+        let bookOCRRunning = bookOCRTask != nil
+        Task {
+            await provider?.setBookOCRRunning(bookOCRRunning)
+            await provider?.focus(page: page, radius: radius)
+        }
+    }
+    
+    func setUpscalingPaused(_ paused: Bool) {
+        guard let upscaler else {
+            return
+        }
+        Task { await upscaler.setPaused(paused) }
+    }
+    
+    private func stopUpscaling() {
+        isUpscalingPage = false
+        upscaledURLs.removeAll()
+        fullImagePage = nil
+        highlightProvider?.clearImages()
+        guard let upscaler else {
+            return
+        }
+        self.upscaler = nil
+        Task { await upscaler.stop() }
+    }
+    
+    private func setUpscalerBookOCRRunning(_ running: Bool) {
+        guard let upscaler else {
+            return
+        }
+        Task { await upscaler.setBookOCRRunning(running) }
+    }
+    
+    private func showUpscaledImage(page: Int, url: URL) {
+        guard upscaler != nil else {
+            return
+        }
+        upscaledURLs[page] = url
+        guard highlightProvider?.hasImage(pageIndex: page) == false else {
+            return
+        }
+        loadImage(page: page, url: url, maxLongSide: fittedLongSide(page: page))
+    }
+    
+    /// A new overlay provider comes with a rebuilt PDFKitView, and starts out empty
+    private func reloadUpscaledImages() {
+        fullImagePage = nil
+        for (page, url) in upscaledURLs where Swift.abs(page - pageIndex) <= 1 {
+            loadImage(page: page, url: url, maxLongSide: fittedLongSide(page: page))
+        }
+    }
+    
+    private func loadImage(page: Int, url: URL, maxLongSide: Int?) {
+        Task {
+            let image = await Task.detached(priority: .userInitiated) {
+                ImageBox(UpscaleCodec.decode(url, maxLongSide: maxLongSide))
+            }.value.image
+            guard let image, upscaler != nil else {
+                return
+            }
+            highlightProvider?.setImage(image, pageIndex: page)
+        }
+    }
+    
+    private func loadFullImageIfZoomed() {
+        guard upscaler != nil, fullImagePage != pageIndex, let pdfView, let url = upscaledURLs[pageIndex],
+              let fit = fitScale(page: pageIndex), pdfView.scaleFactor > fit * Self.zoomedScale else {
+            return
+        }
+        fullImagePage = pageIndex
+        loadImage(page: pageIndex, url: url, maxLongSide: nil)
+    }
+    
+    /// Swaps the page left behind back to the fitted image
+    private func restoreFittedImage(leaving index: Int) {
+        guard let page = fullImagePage, page != index else {
+            return
+        }
+        fullImagePage = nil
+        highlightProvider?.removeImage(pageIndex: page)
+        if let url = upscaledURLs[page], Swift.abs(page - index) <= 1 {
+            loadImage(page: page, url: url, maxLongSide: fittedLongSide(page: page))
+        }
+    }
+    
+    /// The scale that fits `page` on screen, which is the view's width in continuous mode
+    private func fitScale(page: Int) -> CGFloat? {
+        guard let bounds = document?.page(at: page).map(Self.displayedSize), bounds.width > 0, bounds.height > 0 else {
+            return nil
+        }
+        let view = viewSize
+        if UserConfig.shared.pdfDisplayMode == .continuous {
+            return view.width / bounds.width
+        }
+        return min(view.width / bounds.width, view.height / bounds.height)
+    }
+    
+    /// The long side in pixels of `page` when fitted on screen, nil if that can't be told yet
+    private func fittedLongSide(page: Int) -> Int? {
+        guard let fit = fitScale(page: page), let size = document?.page(at: page).map(Self.displayedSize) else {
+            return nil
+        }
+        return Int((max(size.width, size.height) * fit * UIScreen.main.scale).rounded(.up))
+    }
+    
+    private var viewSize: CGSize {
+        if let size = pdfView?.bounds.size, size.width > 0, size.height > 0 {
+            return size
+        }
+        return UIScreen.main.bounds.size
+    }
+    
+    private static func displayedSize(of page: PDFPage) -> CGSize {
+        let bounds = page.bounds(for: .cropBox)
+        return page.rotation % 180 == 0 ? bounds.size : CGSize(width: bounds.height, height: bounds.width)
+    }
+    
+    private static var screenLongSide: CGFloat {
+        let size = UIScreen.main.nativeBounds.size
+        return max(size.width, size.height)
+    }
+    
+    private static let zoomedScale: CGFloat = 1.2
     
     func flushTextLayers() {
         guard let textLayers else {
