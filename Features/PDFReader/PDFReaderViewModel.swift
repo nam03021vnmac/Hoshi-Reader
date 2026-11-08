@@ -519,14 +519,14 @@ final class PDFReaderViewModel {
         guard let fit = fitScale(page: page), let size = document?.page(at: page).map(Self.displayedSize) else {
             return nil
         }
-        return Int((max(size.width, size.height) * fit * UIScreen.main.scale).rounded(.up))
+        return Int((max(size.width, size.height) * fit * Platform.displayScale(of: pdfView)).rounded(.up))
     }
     
     private var viewSize: CGSize {
         if let size = pdfView?.bounds.size, size.width > 0, size.height > 0 {
             return size
         }
-        return UIScreen.main.bounds.size
+        return Platform.screenSize
     }
     
     private static func displayedSize(of page: PDFPage) -> CGSize {
@@ -535,8 +535,7 @@ final class PDFReaderViewModel {
     }
     
     private static var screenLongSide: CGFloat {
-        let size = UIScreen.main.nativeBounds.size
-        return max(size.width, size.height)
+        Platform.screenPixelLongSide
     }
     
     private static let zoomedScale: CGFloat = 1.2

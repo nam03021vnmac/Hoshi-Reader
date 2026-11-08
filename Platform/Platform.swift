@@ -169,12 +169,45 @@ enum Platform {
         }
     }
 
+    // MARK: - Screen
+
+    /// Pixels per point where `view` is shown (on macOS), or on the main screen.
+    static func displayScale(of view: PlatformView?) -> CGFloat {
+        #if os(macOS)
+        view?.window?.backingScaleFactor ?? NSScreen.main?.backingScaleFactor ?? 2
+        #else
+        UIScreen.main.scale
+        #endif
+    }
+
+    /// The main screen's size in points.
+    static var screenSize: CGSize {
+        #if os(macOS)
+        NSScreen.main?.frame.size ?? CGSize(width: 1440, height: 900)
+        #else
+        UIScreen.main.bounds.size
+        #endif
+    }
+
+    /// The longest side in pixels of the largest screen. A Mac can move a window to any of its screens.
+    static var screenPixelLongSide: CGFloat {
+        #if os(macOS)
+        NSScreen.screens
+            .map { max($0.frame.width, $0.frame.height) * $0.backingScaleFactor }
+            .max() ?? 2880
+        #else
+        let size = UIScreen.main.nativeBounds.size
+        return max(size.width, size.height)
+        #endif
+    }
+
     // MARK: - App lifecycle notifications
 
     #if os(macOS)
     nonisolated static let didBecomeActiveNotification = NSApplication.didBecomeActiveNotification
     nonisolated static let willResignActiveNotification = NSApplication.willResignActiveNotification
     nonisolated static let didEnterBackgroundNotification = NSApplication.didHideNotification
+    nonisolated static let willEnterForegroundNotification = NSApplication.didUnhideNotification
     /// Posted by `startMemoryPressureMonitor()` when the system reports memory pressure.
     nonisolated static let didReceiveMemoryWarningNotification = Notification.Name("HoshiDidReceiveMemoryWarning")
 
@@ -193,6 +226,7 @@ enum Platform {
     nonisolated static let didBecomeActiveNotification = UIApplication.didBecomeActiveNotification
     nonisolated static let willResignActiveNotification = UIApplication.willResignActiveNotification
     nonisolated static let didEnterBackgroundNotification = UIApplication.didEnterBackgroundNotification
+    nonisolated static let willEnterForegroundNotification = UIApplication.willEnterForegroundNotification
     nonisolated static let didReceiveMemoryWarningNotification = UIApplication.didReceiveMemoryWarningNotification
     #endif
 }

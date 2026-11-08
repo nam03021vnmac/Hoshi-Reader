@@ -535,7 +535,7 @@ struct PDFReaderView: View {
             viewModel.cancelBookOCR()
             viewModel.setUpscalingPaused(true)
         }
-        .onReceive(NotificationCenter.default.publisher(for: UIApplication.willEnterForegroundNotification)) { _ in
+        .onReceive(NotificationCenter.default.publisher(for: Platform.willEnterForegroundNotification)) { _ in
             viewModel.setUpscalingPaused(false)
         }
         .onReceive(NotificationCenter.default.publisher(for: Platform.willResignActiveNotification)) { _ in

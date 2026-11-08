@@ -10,11 +10,12 @@
 import AppKit
 import PDFKit
 
-/// The AppKit version of the per-page overlay that draws the lookup highlight
-/// (and, in debug builds, the text line boxes) above a PDF page.
+/// The AppKit version of the per-page overlay that draws the upscaled page image, the lookup
+/// highlight and, in debug builds, the text line boxes above a PDF page.
 final class PDFHighlightOverlayView: NSView {
     weak var pdfView: PDFView?
     weak var page: PDFPage?
+    private let imageLayer = CALayer()
     private let shapeLayer = CAShapeLayer()
     private let mainBoxLayer = CAShapeLayer()
     private let rubyBoxLayer = CAShapeLayer()
@@ -32,9 +33,19 @@ final class PDFHighlightOverlayView: NSView {
         didSet { updateColor() }
     }
 
+    /// Native selections are drawn by PDFKit below this view, the page shows its original while it has one
+    var hidesImage = false {
+        didSet { imageLayer.isHidden = hidesImage || imageLayer.contents == nil }
+    }
+
     override init(frame: CGRect) {
         super.init(frame: frame)
         wantsLayer = true
+        // zooming scales this view, an animated frame would drift from the page
+        imageLayer.actions = ["bounds": NSNull(), "position": NSNull(), "transform": NSNull(), "contents": NSNull(), "hidden": NSNull()]
+        imageLayer.contentsGravity = .resize
+        imageLayer.isHidden = true
+        layer?.addSublayer(imageLayer)
         layer?.addSublayer(shapeLayer)
         for (boxLayer, color) in [(mainBoxLayer, NSColor.systemBlue), (rubyBoxLayer, NSColor.systemOrange)] {
             boxLayer.fillColor = nil
@@ -47,6 +58,35 @@ final class PDFHighlightOverlayView: NSView {
 
     required init?(coder: NSCoder) {
         fatalError("init(coder:) has not been implemented")
+    }
+
+    /// Fades when the page is already on screen, so the swap from the original isn't a jump
+    func setImage(_ image: CGImage?, animated: Bool) {
+        if animated, image != nil, imageLayer.contents == nil {
+            let fade = CATransition()
+            fade.type = .fade
+            fade.duration = 0.2
+            imageLayer.add(fade, forKey: "contents")
+        }
+        imageLayer.contents = image
+        imageLayer.isHidden = image == nil || hidesImage
+    }
+
+    /// PDFKit turns this view with a rotated page (its `frameRotation` is minus the page's
+    /// rotation), but the rendered image is already upright. The view's y axis points up, so
+    /// turning back is the opposite sign of the iOS version.
+    private func layoutImage() {
+        let rotation = page?.rotation ?? 0
+        let quarterTurn = rotation % 180 != 0
+        imageLayer.setAffineTransform(.identity)
+        imageLayer.bounds = CGRect(
+            x: 0,
+            y: 0,
+            width: quarterTurn ? bounds.height : bounds.width,
+            height: quarterTurn ? bounds.width : bounds.height
+        )
+        imageLayer.position = CGPoint(x: bounds.midX, y: bounds.midY)
+        imageLayer.setAffineTransform(CGAffineTransform(rotationAngle: CGFloat(rotation) * .pi / 180))
     }
 
     // clicks go through to the page
@@ -71,6 +111,7 @@ final class PDFHighlightOverlayView: NSView {
         CATransaction.begin()
         CATransaction.setDisableActions(true)
         defer { CATransaction.commit() }
+        layoutImage()
         shapeLayer.frame = bounds
         mainBoxLayer.frame = bounds
         rubyBoxLayer.frame = bounds

@@ -255,6 +255,12 @@ struct PDFKitView: NSViewRepresentable {
             name: .PDFViewScaleChanged,
             object: pdfView
         )
+        NotificationCenter.default.addObserver(
+            coordinator,
+            selector: #selector(Coordinator.selectionChanged),
+            name: .PDFViewSelectionChanged,
+            object: pdfView
+        )
 
         coordinator.pdfView = pdfView
         coordinator.overlayProvider = overlayProvider
@@ -360,6 +366,14 @@ struct PDFKitView: NSViewRepresentable {
         @objc func scaleChanged() {
             overlayProvider?.refreshLayout()
             parent.onViewportChanged()
+        }
+
+        @objc func selectionChanged() {
+            guard let pdfView, let document = pdfView.document else {
+                return
+            }
+            let pages = pdfView.currentSelection?.pages.map(document.index(for:)) ?? []
+            overlayProvider?.setSelectedPages(Set(pages))
         }
 
         func observeScrolling() {
