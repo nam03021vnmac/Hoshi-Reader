@@ -74,6 +74,8 @@ If you're planning on contributing a feature or significant change, please open 
 | [Tofugu/WaniKani Audio](https://github.com/tofugu/japanese-vocabulary-pronunciation-audio) | Default audio source | CC-BY-SA-4.0 |
 | [PaddleOCR](https://github.com/PaddlePaddle/PaddleOCR) | PP-OCRv6 models for PDF OCR | Apache-2.0 |
 | [PP-OCRv6_manga](https://huggingface.co/Kellenok/PP-OCRv6_manga) | Manga recognition model for PDF OCR | Apache-2.0 |
+| [Real-ESRGAN](https://github.com/xinntao/Real-ESRGAN) | animevideov3 model for PDF image upscaling | BSD-3 |
+| [mihon_img_upscale](https://github.com/HaoweiLi97/mihon_img_upscale) | Upscaling approach: tile geometry, scheduling, monochrome detection | Apache-2.0 |
 
 ## Issues
 

@@ -167,6 +167,16 @@
         }
       }
     },
+    "%@, %@, %lld,%lld %lld×%lld" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@, %2$@, %3$lld,%4$lld %5$lld×%6$lld"
+          }
+        }
+      }
+    },
     "%lld" : {
       "comment" : "Context: Formatter-only value in reader statistics, progress rows, or setting value labels. Surrounding UI provides the label; keep placeholders, Markdown, and percent signs unchanged.",
       "localizations" : {
@@ -537,13 +547,13 @@
         }
       }
     },
-    "Auto recognizes pages without a usable text layer. Always ignores embedded text. Prefetched pages are recognized ahead of time while reading." : {
+    "Auto recognizes pages without a usable text layer. Always ignores embedded text. Prefetched pages are recognized and upscaled ahead of time while reading." : {
       "comment" : "Context: Settings > Advanced > PDF. Surrounding UI is a grouped form for PDF display and OCR (text recognition) options.",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "自动：仅识别没有可用文本层的页面。始终：忽略内嵌文本。预取的页面会在阅读时提前识别。"
+            "value" : "自动：仅识别没有可用文本层的页面。始终：忽略内嵌文本。预取的页面会在阅读时提前识别和放大。"
           }
         }
       }
@@ -682,6 +692,9 @@
         }
       }
     },
+    "Book" : {
+
+    },
     "Books" : {
       "comment" : "Context: Bookshelf and shelf management. Surrounding UI includes book lists, empty states, shelf actions, sort controls, and book context-menu confirmations.",
       "localizations" : {
@@ -790,6 +803,9 @@
         }
       }
     },
+    "Choose Cover…" : {
+
+    },
     "Choose the **.srt** and press **Match**. Matching only has to be done once." : {
       "comment" : "Context: Sasayaki audiobook feature screens. Surrounding UI includes setup instructions, SRT/audio matching, playback controls, command center options, and Sasayaki theme settings. Preserve Markdown and product names.",
       "localizations" : {
@@ -833,6 +849,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "清除缓存?"
+          }
+        }
+      }
+    },
+    "Clear Upscaled Pages" : {
+      "comment" : "Context: Settings > Advanced > PDF. Surrounding UI is a grouped form for PDF display and OCR (text recognition) options.",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "清除已放大的页面"
           }
         }
       }
@@ -986,6 +1013,12 @@
           }
         }
       }
+    },
+    "Couldn't Save Cover" : {
+
+    },
+    "Cover Updated" : {
+
     },
     "Covers" : {
 
@@ -1161,6 +1194,9 @@
         }
       }
     },
+    "Detection" : {
+
+    },
     "Determines if statistics will be merged entry by entry or replaced completely on a sync." : {
       "comment" : "Context: Settings > Syncing. Surrounding UI explains Google Drive setup, then shows sync direction, auto-sync, Client ID, status, sign-out, and connect controls. Preserve product names and Markdown.",
       "localizations" : {
@@ -1171,6 +1207,9 @@
           }
         }
       }
+    },
+    "Developer" : {
+
     },
     "Dictionaries" : {
       "comment" : "Context: Settings > Backup. Surrounding UI offers backup/restore actions for books and dictionaries, with restore overwrite warnings.",
@@ -1295,6 +1334,9 @@
           }
         }
       }
+    },
+    "Drag the box over the cover" : {
+
     },
     "Drop to Import" : {
 
@@ -1516,6 +1558,17 @@
     },
     "Hours" : {
 
+    },
+    "Image Upscaling" : {
+      "comment" : "Context: Settings > Advanced > PDF. Surrounding UI is a grouped form for PDF display and OCR (text recognition) options.",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "图像放大"
+          }
+        }
+      }
     },
     "Import" : {
       "comment" : "Context: Shared Hoshi Reader label or action. Surrounding UI may be a settings row, alert button, toolbar item, or reader context menu.",
@@ -1761,6 +1814,9 @@
         }
       }
     },
+    "Lines (%lld)" : {
+
+    },
     "Listen to audiobooks and read along with highlighted text." : {
       "comment" : "Context: Sasayaki audiobook feature screens. Surrounding UI includes setup instructions, SRT/audio matching, playback controls, command center options, and Sasayaki theme settings. Preserve Markdown and product names.",
       "localizations" : {
@@ -1928,6 +1984,9 @@
         }
       }
     },
+    "Memory footprint" : {
+
+    },
     "Merge" : {
       "localizations" : {
         "zh-Hans" : {
@@ -1957,7 +2016,6 @@
     },
     "Model" : {
       "comment" : "Context: Shared Hoshi Reader label or action. Surrounding UI may be a settings row, alert button, toolbar item, or reader context menu.",
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -2170,6 +2228,9 @@
         }
       }
     },
+    "OCR Test" : {
+
+    },
     "of %lld days read" : {
       "localizations" : {
         "en" : {
@@ -2263,6 +2324,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "页"
+          }
+        }
+      }
+    },
+    "Page %lld of %lld" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Page %1$lld of %2$lld"
           }
         }
       }
@@ -2370,6 +2441,9 @@
         }
       }
     },
+    "Peak footprint (process)" : {
+
+    },
     "Period" : {
 
     },
@@ -2466,6 +2540,9 @@
         }
       }
     },
+    "Reading Order (%lld characters)" : {
+
+    },
     "Reading Shelf" : {
       "comment" : "Context: Bookshelf and shelf management. Surrounding UI includes book lists, empty states, shelf actions, sort controls, and book context-menu confirmations.",
       "localizations" : {
@@ -2504,6 +2581,9 @@
           }
         }
       }
+    },
+    "Recognition" : {
+
     },
     "Recognizes text on every page without a text layer, so lookups are instant. This can take a while." : {
       "comment" : "Context: PDF reader. Surrounding UI is the reader menu, overlays, sheets, or alerts for PDF books.",
@@ -2554,6 +2634,9 @@
           }
         }
       }
+    },
+    "Render" : {
+
     },
     "Replace" : {
       "localizations" : {
@@ -2636,6 +2719,9 @@
           }
         }
       }
+    },
+    "Run OCR" : {
+
     },
     "Sasayaki" : {
       "comment" : "Context: Sasayaki audiobook feature screens. Surrounding UI includes setup instructions, SRT/audio matching, playback controls, command center options, and Sasayaki theme settings. Preserve Markdown and product names.",
@@ -2801,6 +2887,9 @@
     "Show Control Bar" : {
 
     },
+    "Show Glyph Cells" : {
+
+    },
     "Show More" : {
 
     },
@@ -2871,6 +2960,9 @@
           }
         }
       }
+    },
+    "Show Text Boxes" : {
+
     },
     "Show Title" : {
       "comment" : "Context: Settings > Appearance. Surrounding UI is a grouped form for reader theme, text, layout, display, and popup controls.",
@@ -3334,6 +3426,9 @@
         }
       }
     },
+    "Timings" : {
+
+    },
     "Title" : {
       "comment" : "Context: Bookshelf and shelf management. Surrounding UI includes book lists, empty states, shelf actions, sort controls, and book context-menu confirmations.",
       "localizations" : {
@@ -3380,8 +3475,22 @@
         }
       }
     },
+    "Total" : {
+
+    },
     "Total Time" : {
 
+    },
+    "Turn on Upscale Images for a book in the reader menu to sharpen its low-resolution pages. Pages are processed on this device and saved (%@ used), which uses more battery while reading new pages." : {
+      "comment" : "Context: Settings > Advanced > PDF. Surrounding UI is a grouped form for PDF display and OCR (text recognition) options.",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "在阅读器菜单中为书籍开启“放大图像”，可使低分辨率页面更清晰。页面在此设备上处理并保存（已用 %@），阅读新页面时会消耗更多电量。"
+          }
+        }
+      }
     },
     "Unshelved" : {
       "comment" : "Context: Bookshelf and shelf management. Surrounding UI includes book lists, empty states, shelf actions, sort controls, and book context-menu confirmations.",
@@ -3414,6 +3523,28 @@
         }
       }
     },
+    "Upscale Images" : {
+      "comment" : "Context: PDF reader. Surrounding UI is the reader menu, overlays, sheets, or alerts for PDF books.",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "放大图像"
+          }
+        }
+      }
+    },
+    "Upscaling page…" : {
+      "comment" : "Context: PDF reader. Surrounding UI is the reader menu, overlays, sheets, or alerts for PDF books.",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "正在放大页面…"
+          }
+        }
+      }
+    },
     "URL" : {
       "comment" : "Context: Shared Hoshi Reader label or action. Surrounding UI may be a settings row, alert button, toolbar item, or reader context menu.",
       "localizations" : {
@@ -3424,6 +3555,9 @@
           }
         }
       }
+    },
+    "Use as Cover" : {
+
     },
     "Use Manga Model for This Book" : {
       "comment" : "Context: PDF reader. Surrounding UI is the reader menu, overlays, sheets, or alerts for PDF books.",

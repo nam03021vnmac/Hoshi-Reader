@@ -78,7 +78,7 @@ private actor ThumbnailDecoder {
 struct CoverFallback: View {
     let title: String
     var author: String? = nil
-    var aspectRatio: CGFloat = 0.709
+    var aspectRatio: CGFloat = BookCover.aspectRatio
     var cornerRadius: CGFloat = 6
     
     private var gradient: LinearGradient {

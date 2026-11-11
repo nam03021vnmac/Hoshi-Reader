@@ -73,3 +73,7 @@ Scripts/ocr/__pycache__/
 
 # Scripts/make-dmg.sh output
 /build/
+
+# Upscale model tooling (Scripts/upscale)
+Scripts/upscale/.venv/
+Scripts/upscale/__pycache__/

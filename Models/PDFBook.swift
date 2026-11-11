@@ -24,6 +24,8 @@ nonisolated struct PDFInfo: Codable, Sendable {
     var ocrPages: Set<Int> = []
     /// recognized with the manga pack instead of the selected one
     var isManga: Bool = false
+    /// show upscaled page images while reading this book
+    var upscaleImages: Bool = false
 
     init(pageCount: Int) {
         self.pageCount = pageCount
@@ -38,6 +40,7 @@ nonisolated struct PDFInfo: Codable, Sendable {
         case forceOCR
         case ocrPages
         case isManga
+        case upscaleImages
     }
 
     // fields added later are optional, so older files still load
@@ -49,5 +52,6 @@ nonisolated struct PDFInfo: Codable, Sendable {
         forceOCR = try container.decodeIfPresent(Bool.self, forKey: .forceOCR) ?? false
         ocrPages = try container.decodeIfPresent(Set<Int>.self, forKey: .ocrPages) ?? []
         isManga = try container.decodeIfPresent(Bool.self, forKey: .isManga) ?? false
+        upscaleImages = try container.decodeIfPresent(Bool.self, forKey: .upscaleImages) ?? false
     }
 }

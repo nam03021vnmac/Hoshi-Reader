@@ -118,7 +118,8 @@ class GoogleDriveAuth: NSObject {
     
     private func getAuthorizationCode(from url: URL, callbackScheme: String) async throws -> String {
         let callbackURL: URL = try await withCheckedThrowingContinuation { continuation in
-            let session = ASWebAuthenticationSession(url: url, callbackURLScheme: callbackScheme) { callbackURL, error in
+            // @Sendable keeps this closure off the main actor: macOS calls it on a background XPC queue
+            let session = ASWebAuthenticationSession(url: url, callbackURLScheme: callbackScheme) { @Sendable callbackURL, error in
                 if let error {
                     continuation.resume(throwing: error)
                 } else if let callbackURL {

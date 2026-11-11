@@ -135,10 +135,41 @@ extension View {
     /// Lets the desktop show through a window's background, like Finder and System Settings.
     /// Views that paint their own background, such as a book or a dictionary page, stay opaque.
     func translucentWindowBackground() -> some View {
-        containerBackground(.thinMaterial, for: .window)
-            // the toolbar keeps a material of its own so content scrolled under it is blurred out
-            .toolbarBackground(.thinMaterial, for: .windowToolbar)
-            .toolbarBackgroundVisibility(.visible, for: .windowToolbar)
+        containerBackground(for: .window) {
+            ActiveMaterial(material: .underWindowBackground, blendingMode: .behindWindow)
+        }
+        // the toolbar keeps a material of its own so content scrolled under it is blurred out.
+        // SwiftUI's toolbarBackground only takes a ShapeStyle, which turns opaque like the
+        // window's, so the material is laid over the area under the toolbar instead
+        .toolbarBackgroundVisibility(.hidden, for: .windowToolbar)
+        .overlay(alignment: .top) {
+            Color.clear
+                .frame(height: 0)
+                .background {
+                    ActiveMaterial(material: .titlebar, blendingMode: .withinWindow)
+                        .ignoresSafeArea(edges: .top)
+                }
+                .allowsHitTesting(false)
+        }
+    }
+}
+
+/// A material that stays translucent while another window or app is in front. SwiftUI's
+/// materials follow the window's active state, so AppKit swaps them for an opaque gray as
+/// soon as the window loses focus.
+private struct ActiveMaterial: NSViewRepresentable {
+    let material: NSVisualEffectView.Material
+    let blendingMode: NSVisualEffectView.BlendingMode
+
+    func makeNSView(context: Context) -> NSVisualEffectView {
+        let view = NSVisualEffectView()
+        view.state = .active
+        return view
+    }
+
+    func updateNSView(_ view: NSVisualEffectView, context: Context) {
+        view.material = material
+        view.blendingMode = blendingMode
     }
 }
 

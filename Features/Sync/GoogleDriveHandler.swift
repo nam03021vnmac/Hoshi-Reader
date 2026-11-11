@@ -340,7 +340,7 @@ class GoogleDriveHandler {
                 }
                 continuation.resume(returning: data)
             }
-            observationRetainer.observation = task.observe(\.countOfBytesReceived) { task, _ in
+            observationRetainer.observation = task.observe(\.countOfBytesReceived) { @Sendable task, _ in
                 let total = task.countOfBytesExpectedToReceive
                 guard total > 0 else { return }
                 Task { @MainActor in

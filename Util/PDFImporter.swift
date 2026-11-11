@@ -26,8 +26,19 @@ nonisolated enum PDFImportError: LocalizedError {
 }
 
 struct PDFImporter {
-    private static let coverLongSide: CGFloat = 768
-    
+    nonisolated private static let coverLongSide: CGFloat = 768
+
+    /// Renders the page, or only `region` of it (in page space), into the book folder and returns the path for `BookMetadata.cover`
+    nonisolated static func writeCover(_ page: PDFPage, region: CGRect? = nil, folder: String, fileName: String) throws -> String? {
+        guard let rendered = PageRenderer.render(page, longSide: coverLongSide, region: region),
+              let data = PlatformImage(cgImage: rendered.image).jpegData(compressionQuality: 0.85) else {
+            return nil
+        }
+        let bookFolder = try BookStorage.getBooksDirectory().appendingPathComponent(folder)
+        try data.write(to: bookFolder.appendingPathComponent(fileName), options: .atomic)
+        return "Books/\(folder)/\(fileName)"
+    }
+
     static func importPDF(from sourceURL: URL, originalName: String) throws {
         guard let document = PDFDocument(url: sourceURL) else {
             throw PDFImportError.unreadable
@@ -60,14 +71,8 @@ struct PDFImporter {
         do {
             try BookStorage.copyFile(from: sourceURL, to: "Books/\(safeTitle)/\(fileName)")
             
-            var coverPath: String?
-            if let page = document.page(at: 0),
-               let rendered = PageRenderer.render(page, longSide: coverLongSide),
-               let data = PlatformImage(cgImage: rendered.image).jpegData(compressionQuality: 0.85) {
-                try data.write(to: bookFolder.appendingPathComponent("cover.jpg"), options: .atomic)
-                coverPath = "Books/\(safeTitle)/cover.jpg"
-            }
-            
+            let coverPath = try document.page(at: 0).flatMap { try writeCover($0, folder: safeTitle, fileName: "cover.jpg") }
+
             let metadata = BookMetadata(
                 title: title,
                 author: author?.isEmpty == false ? author : nil,

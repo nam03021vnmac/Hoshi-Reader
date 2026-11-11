@@ -120,6 +120,9 @@ struct PDFReaderView: View {
                                 }
                             },
                             onPageTap: { index, pagePoint, viewPoint in
+                                guard !viewModel.isChoosingCover else {
+                                    return
+                                }
                                 Task {
                                     if await !viewModel.handlePageTap(pageIndex: index, point: pagePoint) {
                                         handleTapOutside(at: viewPoint, screenHeight: geometry.size.height)
@@ -127,6 +130,9 @@ struct PDFReaderView: View {
                                 }
                             },
                             onTapOutside: { viewPoint in
+                                guard !viewModel.isChoosingCover else {
+                                    return
+                                }
                                 handleTapOutside(at: viewPoint, screenHeight: geometry.size.height)
                             },
                             onViewportChanged: {
@@ -180,7 +186,23 @@ struct PDFReaderView: View {
                             )
                             .zIndex(Double(100 + (viewModel.popups.firstIndex(where: { $0.id == popupId }) ?? 0)))
                         }
+
+                        if viewModel.isChoosingCover {
+                            PDFCoverCropOverlay(
+                                topPadding: topSafeArea,
+                                bottomPadding: bottomSafeArea > 0 ? bottomSafeArea : 8,
+                                onCancel: {
+                                    viewModel.isChoosingCover = false
+                                },
+                                onSave: { box in
+                                    viewModel.setCover(from: box)
+                                }
+                            )
+                            .transition(.opacity)
+                            .zIndex(200)
+                        }
                     }
+                    .animation(.default.speed(2), value: viewModel.isChoosingCover)
                     .frame(width: geometry.size.width, height: geometry.size.height)
                 }
                 // pages use the whole screen, the chrome floats on top
@@ -227,10 +249,41 @@ struct PDFReaderView: View {
                     .allowsHitTesting(false)
                     .transition(.opacity)
                 }
+                if viewModel.isUpscalingPage {
+                    HStack(spacing: 8) {
+                        ProgressView()
+                            .controlSize(.small)
+                        Text("Upscaling page…")
+                            .font(.caption)
+                    }
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 8)
+                    .conditionalGlassEffect()
+                    .allowsHitTesting(false)
+                    .transition(.opacity)
+                }
+                if let notice = viewModel.coverNotice {
+                    Group {
+                        switch notice {
+                        case .saved:
+                            Label("Cover Updated", systemImage: "checkmark")
+                        case .failed:
+                            Label("Couldn't Save Cover", systemImage: "exclamationmark.triangle")
+                        }
+                    }
+                    .font(.caption)
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 8)
+                    .conditionalGlassEffect()
+                    .allowsHitTesting(false)
+                    .transition(.opacity)
+                }
             }
             .foregroundStyle(infoStyle)
             .padding(.top, topSafeArea + 8)
             .animation(.default, value: viewModel.isLoadingPage)
+            .animation(.default, value: viewModel.isUpscalingPage)
+            .animation(.default, value: viewModel.coverNotice)
         }
         .overlay(alignment: .bottom) {
             if userConfig.readerAlwaysShowProgress && viewModel.document != nil {
@@ -346,6 +399,22 @@ struct PDFReaderView: View {
                             }
                         }
                         
+                        Toggle(isOn: Binding(
+                            get: { viewModel.upscaleImages },
+                            set: { viewModel.setUpscaleImages($0) }
+                        )) {
+                            Label("Upscale Images", systemImage: "wand.and.stars")
+                        }
+                        
+                        Button {
+                            viewModel.beginChoosingCover()
+                            withAnimation(.default.speed(2)) {
+                                focusMode = true
+                            }
+                        } label: {
+                            Label("Choose Cover…", systemImage: "crop")
+                        }
+
                         #if DEBUG
                         Toggle(isOn: $viewModel.showTextBoxes) {
                             Label("Show Text Boxes", systemImage: "rectangle.dashed")
@@ -464,6 +533,10 @@ struct PDFReaderView: View {
         .onReceive(NotificationCenter.default.publisher(for: Platform.didEnterBackgroundNotification)) { _ in
             // progress is on disk per page, so it resumes where it stopped
             viewModel.cancelBookOCR()
+            viewModel.setUpscalingPaused(true)
+        }
+        .onReceive(NotificationCenter.default.publisher(for: Platform.willEnterForegroundNotification)) { _ in
+            viewModel.setUpscalingPaused(false)
         }
         .onReceive(NotificationCenter.default.publisher(for: Platform.willResignActiveNotification)) { _ in
             viewModel.saveBookmark()

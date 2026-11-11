@@ -41,7 +41,7 @@ MODELS=(
 # Kellenok's manga fine-tune of the PP-OCRv6 small recognizer (Apache-2.0), file|revision|sha256.
 # The repo has no inference.yml, but preprocessing and dictionary match PP-OCRv6_small_rec, so the
 # pack reuses that one.
-MANGA_REC="rec/manga_rec_v0.2.onnx|8ee29e094b6aac77dd067c70805438782fa16ab0|de12c84c63e62c80339e882e675983d886670dcb6f0147e1ed041afd6fa81888"
+MANGA_REC="rec/manga_rec_v0.2.onnx|d090c421598eadd2e179ad62c29ff0767492072c|de12c84c63e62c80339e882e675983d886670dcb6f0147e1ed041afd6fa81888"
 
 # pack|det dir|rec dir[|model name]
 PACKS=(
