@@ -193,8 +193,8 @@ struct ReaderView: View {
             statsSyncMode: statsSyncMode,
             syncAudioBook: syncAudioBook
         ))
-        _topSafeArea = State(initialValue: UIDevice.current.userInterfaceIdiom == .pad ? 35 : UIApplication.topSafeArea)
-        _bottomSafeArea = State(initialValue: UIDevice.current.userInterfaceIdiom == .pad ? 20 : UIApplication.bottomSafeArea)
+        _topSafeArea = State(initialValue: UIApplication.readerSafeArea.top)
+        _bottomSafeArea = State(initialValue: UIApplication.readerSafeArea.bottom)
     }
     
     private var progressString: String {
@@ -782,6 +782,10 @@ struct ReaderView: View {
             Task {
                 await viewModel.flushAutoSync()
             }
+        }
+        .onGeometryChange(for: CGSize.self) { $0.size } action: { _ in
+            // the insets change when the phone rotates
+            (topSafeArea, bottomSafeArea) = UIApplication.readerSafeArea
         }
         .ignoresSafeArea(edges: [.top, .bottom])
         .ignoresSafeArea(.keyboard)

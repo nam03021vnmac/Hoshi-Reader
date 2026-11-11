@@ -108,6 +108,15 @@ extension UIApplication {
             .keyWindow?
             .safeAreaInsets.bottom ?? 0
     }
+
+    /// Top and bottom space the readers keep clear. iPad uses fixed values. On iPhone they follow the
+    /// window, and the top never drops below 20 so landscape (no status bar, top inset 0) isn't flush to the edge.
+    static var readerSafeArea: (top: CGFloat, bottom: CGFloat) {
+        if UIDevice.current.userInterfaceIdiom == .pad {
+            return (35, 20)
+        }
+        return (max(topSafeArea, 20), bottomSafeArea)
+    }
 }
 
 struct LoadingOverlay: View {
