@@ -21,8 +21,8 @@ struct PDFReaderView: View {
     
     init(book: BookMetadata) {
         _viewModel = State(initialValue: PDFReaderViewModel(book: book))
-        _topSafeArea = State(initialValue: Platform.isLargeDevice ? 35 : Platform.topSafeArea)
-        _bottomSafeArea = State(initialValue: Platform.isLargeDevice ? 20 : Platform.bottomSafeArea)
+        _topSafeArea = State(initialValue: Platform.readerSafeArea.top)
+        _bottomSafeArea = State(initialValue: Platform.readerSafeArea.bottom)
     }
     
     /// Height of the strip at the bottom of the screen where a tap shows the controls
@@ -555,6 +555,10 @@ struct PDFReaderView: View {
         .onDisappear {
             viewModel.saveBookmark()
             viewModel.close()
+        }
+        .onGeometryChange(for: CGSize.self) { $0.size } action: { _ in
+            // the insets change when the phone rotates
+            (topSafeArea, bottomSafeArea) = Platform.readerSafeArea
         }
         .ignoresSafeArea(edges: [.top, .bottom])
         .ignoresSafeArea(.keyboard)

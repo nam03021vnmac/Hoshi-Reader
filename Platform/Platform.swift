@@ -47,6 +47,15 @@ enum Platform {
         #endif
     }
 
+    /// Top and bottom space the readers keep clear. iPad and Mac use fixed values. On iPhone they follow the
+    /// window, and the top never drops below 20 so landscape (no status bar, top inset 0) isn't flush to the edge.
+    static var readerSafeArea: (top: CGFloat, bottom: CGFloat) {
+        if isLargeDevice {
+            return (35, 20)
+        }
+        return (max(topSafeArea, 20), bottomSafeArea)
+    }
+
     static var presentationAnchor: ASPresentationAnchor {
         #if os(macOS)
         NSApp.keyWindow ?? NSApp.windows.first ?? NSWindow()
