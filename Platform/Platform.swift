@@ -137,7 +137,14 @@ enum Platform {
         #if os(macOS)
         .invalid
         #else
-        BackgroundTaskID(identifier: UIApplication.shared.beginBackgroundTask(expirationHandler: expirationHandler))
+        // UIKit calls the expiration handler on the main thread
+        var handler: (@Sendable () -> Void)?
+        if let expirationHandler {
+            handler = { @Sendable in
+                MainActor.assumeIsolated { expirationHandler() }
+            }
+        }
+        return BackgroundTaskID(identifier: UIApplication.shared.beginBackgroundTask(expirationHandler: handler))
         #endif
     }
 
