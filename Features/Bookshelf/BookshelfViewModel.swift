@@ -6,7 +6,6 @@
 //  SPDX-License-Identifier: GPL-3.0-or-later
 //
 
-import AVFoundation
 import SwiftUI
 import EPUBKit
 
@@ -25,13 +24,17 @@ class BookshelfViewModel {
     var isDownloading: Bool = false
     var importBooksProgress: String?
     var downloadingBooks: [UUID: Double] = [:]
-    var sasayakiProgress: SasayakiTranscriptionProgress?
-    var sasayakiError: String?
+    var sasayakiProgress: SasayakiTranscriptionProgress? {
+        get { SasayakiMatchCoordinator.shared.progress }
+        set { SasayakiMatchCoordinator.shared.progress = newValue }
+    }
+    var sasayakiError: String? {
+        get { SasayakiMatchCoordinator.shared.error }
+        set { SasayakiMatchCoordinator.shared.error = newValue }
+    }
     
     private var bookProgress: [UUID: Double] = [:]
     private var googleDriveSyncFiles: [UUID: DriveSyncFiles] = [:]
-    private var sasayakiTask: Task<Void, Never>?
-    private var sasayakiBookId: UUID?
     
     func loadBooks() {
         do {
@@ -167,11 +170,9 @@ class BookshelfViewModel {
     }
     
     func deleteBook(_ book: BookMetadata) {
-        if sasayakiBookId == book.id {
-            sasayakiTask?.cancel()
-        }
         do {
             let bookURL = try BookStorage.getBooksDirectory().appendingPathComponent(book.folder)
+            SasayakiMatchCoordinator.shared.cancel(root: bookURL)
             StatisticsStorage.archive(book)
             try BookStorage.delete(at: bookURL)
             let folder = book.folder
@@ -452,124 +453,31 @@ class BookshelfViewModel {
     
     func runSasayakiMatch(book: BookMetadata, srtURL: URL) throws -> SasayakiMatchData {
         let rootURL = try BookStorage.getBooksDirectory().appendingPathComponent(book.folder)
-        let accessing = srtURL.startAccessingSecurityScopedResource()
-        defer {
-            if accessing {
-                srtURL.stopAccessingSecurityScopedResource()
-            }
-        }
-        
-        let srtData = try Data(contentsOf: srtURL)
-        let cues = SasayakiParser.parseCues(from: srtData)
-        let result = try SasayakiMatcher.match(rootURL: rootURL, cues: cues)
-        try BookStorage.save(result, inside: rootURL, as: FileNames.sasayakiMatch)
-        return result
+        return try SasayakiMatchCoordinator.shared.runSubtitleMatch(rootURL: rootURL, srtURL: srtURL)
     }
     
     func sasayakiIsRunning(_ book: BookMetadata) -> Bool {
-        sasayakiTask != nil && sasayakiBookId == book.id
+        guard let rootURL = try? BookStorage.getBooksDirectory().appendingPathComponent(book.folder) else {
+            return false
+        }
+        return SasayakiMatchCoordinator.shared.isRunning(root: rootURL)
     }
     
     func pauseSasayakiTranscription() {
-        sasayakiTask?.cancel()
+        SasayakiMatchCoordinator.shared.pause()
     }
     
     @available(iOS 26.0, macOS 26.0, *)
     func startSasayakiTranscription(book: BookMetadata, audioURL: URL) {
-        guard sasayakiTask == nil else {
+        guard let rootURL = try? BookStorage.getBooksDirectory().appendingPathComponent(book.folder) else {
             return
         }
-        sasayakiBookId = book.id
-        sasayakiError = nil
-        sasayakiTask = Task { @MainActor in
-            Platform.isIdleTimerDisabled = true
-            defer {
-                sasayakiTask = nil
-                sasayakiProgress = nil
-                sasayakiBookId = nil
-                Platform.isIdleTimerDisabled = false
-            }
-            do {
-                try await runSasayakiTranscription(book: book, audioURL: audioURL)
-            } catch is CancellationError {
-            } catch {
-                sasayakiError = error.localizedDescription
-            }
-        }
-    }
-    
-    @available(iOS 26.0, macOS 26.0, *)
-    private func runSasayakiTranscription(book: BookMetadata, audioURL: URL) async throws {
-        let rootURL = try BookStorage.getBooksDirectory().appendingPathComponent(book.folder)
-        let accessing = audioURL.startAccessingSecurityScopedResource()
-        defer {
-            if accessing {
-                audioURL.stopAccessingSecurityScopedResource()
-            }
-        }
-        
-        let audio = try AVAudioFile(forReading: audioURL)
-        let duration = Double(audio.length) / audio.processingFormat.sampleRate
-        
-        var playback = BookStorage.loadSasayakiPlayback(root: rootURL) ?? SasayakiPlaybackData(lastPosition: 0)
-        playback.audioBookmark = try? audioURL.bookmarkData(
-            options: .minimalBookmark,
-            includingResourceValuesForKeys: nil,
-            relativeTo: nil
-        )
-        try? BookStorage.save(playback, inside: rootURL, as: FileNames.sasayakiPlayback)
-        
-        var transcript = SasayakiTranscript(through: 0, duration: duration, tokens: [])
-        if let saved = BookStorage.loadSasayakiTranscript(root: rootURL), saved.duration == duration {
-            transcript = saved
-        }
-        
-        sasayakiProgress = .transcribing(through: transcript.through, duration: duration, remaining: nil)
-        var lastPersist = Date()
-        let startPosition = transcript.through
-        var firstResultAt: Date?
-        do {
-            if !transcript.isComplete {
-                try await SasayakiTranscriber.transcribe(file: audio, from: transcript.through) { fraction in
-                    self.sasayakiProgress = .downloading(fraction)
-                } onTokens: { tokens, through in
-                    transcript.tokens.append(contentsOf: tokens)
-                    transcript.through = through
-                    let startedAt = firstResultAt ?? Date()
-                    firstResultAt = startedAt
-                    let elapsed = Date().timeIntervalSince(startedAt)
-                    let processed = through - startPosition
-                    let remaining = elapsed > 3 && processed > 30
-                    ? (duration - through) * elapsed / processed
-                    : nil
-                    self.sasayakiProgress = .transcribing(through: through, duration: duration, remaining: remaining)
-                    if Date().timeIntervalSince(lastPersist) > 15 {
-                        lastPersist = Date()
-                        try? BookStorage.save(transcript, inside: rootURL, as: FileNames.sasayakiTranscript)
-                    }
-                }
-            }
-        } catch is CancellationError {
-        }
-        
-        guard !transcript.tokens.isEmpty else {
-            return
-        }
-        try? BookStorage.save(transcript, inside: rootURL, as: FileNames.sasayakiTranscript)
-        
-        sasayakiProgress = .aligning
-        let tokens = transcript.tokens
-        let source = try SasayakiSource.build(rootURL: rootURL)
-        let result = await Task.detached(priority: .userInitiated) {
-            SasayakiAligner.align(source: source, tokens: tokens)
-        }.value
-        
-        try BookStorage.save(result, inside: rootURL, as: FileNames.sasayakiMatch)
+        SasayakiMatchCoordinator.shared.startTranscription(rootURL: rootURL, audioURL: audioURL)
     }
     
     func clearSasayakiTranscript(book: BookMetadata) throws {
         let rootURL = try BookStorage.getBooksDirectory().appendingPathComponent(book.folder)
-        try? FileManager.default.removeItem(at: rootURL.appendingPathComponent(FileNames.sasayakiTranscript))
+        SasayakiMatchCoordinator.shared.clearTranscript(rootURL: rootURL)
     }
     
     func loadSasayakiAudioURL(book: BookMetadata) -> URL? {

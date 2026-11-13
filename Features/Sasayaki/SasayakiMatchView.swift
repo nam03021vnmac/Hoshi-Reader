@@ -6,7 +6,6 @@
 //  SPDX-License-Identifier: GPL-3.0-or-later
 //
 
-import Speech
 import SwiftUI
 import UniformTypeIdentifiers
 
@@ -26,10 +25,7 @@ struct SasayakiMatchView: View {
     @State private var showClearTranscript = false
     
     private var canTranscribe: Bool {
-        if #available(iOS 26.0, macOS 26.0, *) {
-            return SpeechTranscriber.isAvailable
-        }
-        return false
+        SasayakiMatchCoordinator.canTranscribe
     }
     
     var body: some View {

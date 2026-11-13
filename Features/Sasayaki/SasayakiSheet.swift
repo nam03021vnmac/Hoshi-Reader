@@ -6,149 +6,102 @@
 //  SPDX-License-Identifier: GPL-3.0-or-later
 //
 
+import ImageIO
 import SwiftUI
-import UniformTypeIdentifiers
+
+enum SasayakiSheetTab: CaseIterable, Identifiable {
+    case resources
+    case chapters
+    case settings
+    var id: Self { self }
+    
+    var title: LocalizedStringKey {
+        switch self {
+        case .resources: "Resources"
+        case .chapters: "Chapters"
+        case .settings: "Settings"
+        }
+    }
+}
 
 struct SasayakiSheet: View {
-    @Environment(UserConfig.self) private var userConfig
-    var player: SasayakiPlayer
-    let onImportAudio: (URL) throws -> Void
+    var viewModel: ReaderViewModel
     let onDismiss: () -> Void
     
-    @State private var isImportingAudio = false
+    @State private var tab: SasayakiSheetTab
+    @State private var tabChosen = false
+    @State private var height: CGFloat = 0
+    
+    init(viewModel: ReaderViewModel, onDismiss: @escaping () -> Void) {
+        self.viewModel = viewModel
+        self.onDismiss = onDismiss
+        let player = viewModel.sasayakiPlayer!
+        _tab = State(initialValue: player.hasAudio && !player.audiobookInfo.chapters.isEmpty ? .chapters : .resources)
+    }
+    
+    private var player: SasayakiPlayer {
+        viewModel.sasayakiPlayer
+    }
+    
+    // a short sheet, such as the medium detent or a phone in landscape, keeps most of its height for the tabs
+    private var isCompact: Bool {
+        height > 0 && height < 480
+    }
+    
+    private var tabSelection: Binding<SasayakiSheetTab> {
+        Binding {
+            tab
+        } set: { newTab in
+            tab = newTab
+            tabChosen = true
+        }
+    }
     
     var body: some View {
         NavigationStack {
-            Form {
-                Section("Audio") {
+            VStack(spacing: 0) {
+                VStack(spacing: 12) {
                     if player.hasAudio {
-                        HStack(spacing: 20) {
-                            Button {
-                                userConfig.verticalWriting ? player.skip(forward: true) : player.skip(forward: false)
-                            } label: {
-                                Image(systemName: "15.arrow.trianglehead.counterclockwise")
-                            }
-                            
-                            Button {
-                                userConfig.verticalWriting ? player.nextCue() : player.prevCue()
-                            } label: {
-                                Image(systemName: "backward.fill")
-                            }
-                            
-                            Button {
-                                player.togglePlayback()
-                            } label: {
-                                Image(systemName: player.isPlaying ? "pause.fill" : "play.fill")
-                                    .font(.system(size: 30))
-                            }
-                            
-                            Button {
-                                userConfig.verticalWriting ? player.prevCue() : player.nextCue()
-                            } label: {
-                                Image(systemName: "forward.fill")
-                            }
-                            
-                            Button {
-                                userConfig.verticalWriting ? player.skip(forward: false) : player.skip(forward: true)
-                            } label: {
-                                Image(systemName: "15.arrow.trianglehead.clockwise")
-                            }
-                        }
-                        .buttonStyle(.borderless)
-                        .font(.title2)
-                        .foregroundStyle(.secondary)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 4)
-                        
-                        Text("\(Self.formatTime(player.currentTime)) / \(Self.formatTime(player.duration))")
-                            .foregroundStyle(.secondary)
-                            .monospacedDigit()
+                        SasayakiPlaybackHeader(viewModel: viewModel, compact: isCompact)
                     }
                     
-                    Button("Load Audio") {
-                        isImportingAudio = true
-                    }
-                    
-                    if let errorMessage = player.errorMessage {
-                        Text(errorMessage)
-                            .foregroundStyle(.red)
-                    }
-                }
-                
-                Section("Playback") {
-                    VStack {
-                        HStack {
-                            Text("Delay")
-                            Spacer()
-                            Text(String(format: "%+.2fs", player.delay))
-                                .monospacedDigit()
-                                .fontWeight(.semibold)
-                        }
-                        SteppedSlider(value: Bindable(player).delay, in: -4...4, step: 0.05)
-                    }
-                    VStack {
-                        HStack {
-                            Text("Speed")
-                            Spacer()
-                            Text(String(format: "%.2fx", player.rate))
-                                .monospacedDigit()
-                                .fontWeight(.semibold)
-                        }
-                        SteppedSlider(value: Bindable(player).rate, in: 0.5...3, step: 0.05)
-                    }
-                }
-                
-                Section("Settings") {
-                    Toggle("Show Sasayaki Toggle", isOn: Bindable(userConfig).readerShowSasayakiToggle)
-                    Toggle("Auto-Scroll", isOn: Bindable(userConfig).sasayakiAutoScroll)
-                    Toggle("Auto-Pause on Lookup", isOn: Bindable(userConfig).sasayakiAutoPause)
-                    Toggle(SasayakiSettingsView.doubleTapSeekTitle, isOn: Bindable(userConfig).sasayakiDoubleTapSeek)
-                    Toggle("Pause on Images", isOn: Bindable(userConfig).sasayakiImagePause)
-                    if userConfig.sasayakiImagePause {
-                        HStack {
-                            Text("Pause Duration")
-                            Spacer()
-                            Text("\(Int(userConfig.sasayakiImagePauseDuration))s")
-                                .fontWeight(.semibold)
-                            Stepper("", value: Bindable(userConfig).sasayakiImagePauseDuration, in: 1...30, step: 1)
-                                .labelsHidden()
+                    Picker("", selection: tabSelection) {
+                        ForEach(SasayakiSheetTab.allCases) { tab in
+                            Text(tab.title).tag(tab)
                         }
                     }
+                    .pickerStyle(.segmented)
+                    .labelsHidden()
                 }
+                .padding(.horizontal)
+                .padding(.bottom, 12)
+                #if os(macOS)
+                .padding(.top, 12)
+                #endif
                 
-                Section("Control Bar") {
-                    Toggle("Show Control Bar", isOn: Bindable(userConfig).sasayakiShowControlBar)
-                    if userConfig.sasayakiShowControlBar {
-                        Toggle("Always Show Control Bar", isOn: Bindable(userConfig).sasayakiAlwaysShowControlBar)
-                        HStack {
-                            Text("Control Bar Side")
-                            Spacer()
-                            Picker("", selection: Bindable(userConfig).sasayakiControlBarSide) {
-                                Text("Left").tag(SasayakiControlBarSide.left)
-                                Text("Right").tag(SasayakiControlBarSide.right)
-                            }
-                            .pickerStyle(.segmented)
-                            .labelsHidden()
-                            .frame(width: 120)
-                        }
-                    }
-                }
-                
-                Section("Light Theme") {
-                    ColorPicker("Text Color", selection: Bindable(userConfig).sasayakiTextColor)
-                    ColorPicker("Background Color", selection: Bindable(userConfig).sasayakiBackgroundColor)
-                }
-                
-                Section("Dark Theme") {
-                    ColorPicker("Text Color", selection: Bindable(userConfig).sasayakiDarkTextColor)
-                    ColorPicker("Background Color", selection: Bindable(userConfig).sasayakiDarkBackgroundColor)
+                tabContent
+                    .frame(maxHeight: .infinity)
+                    .contentMargins(.top, 0, for: .scrollContent)
+            }
+            #if os(iOS)
+            // the grouped forms below the header would otherwise sit on a different color than it
+            .background(Color(uiColor: .systemGroupedBackground))
+            #endif
+            .onGeometryChange(for: CGFloat.self) { proxy in
+                proxy.size.height
+            } action: { newHeight in
+                height = newHeight
+            }
+            .onChange(of: player.audiobookInfo.chapters.isEmpty) { _, isEmpty in
+                // the chapters load after the audio, so a sheet opened before then switches once they arrive
+                if !isEmpty, !tabChosen, player.hasAudio, tab == .resources {
+                    tab = .chapters
                 }
             }
-            .formStyle(.grouped)
             .navigationTitle("Sasayaki")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .confirmationAction) {
+                ToolbarItem(placement: .sheetDismiss) {
                     Button {
                         onDismiss()
                     } label: {
@@ -156,22 +109,237 @@ struct SasayakiSheet: View {
                     }
                 }
             }
-            .fileImporter(
-                isPresented: $isImportingAudio,
-                allowedContentTypes: ["mp3", "m4b", "mp4"].compactMap { UTType(filenameExtension: $0) }
-            ) { result in
-                guard case .success(let url) = result else { return }
-                do {
-                    try onImportAudio(url)
-                } catch {
-                    player.errorMessage = error.localizedDescription
+        }
+    }
+    
+    @ViewBuilder
+    private var tabContent: some View {
+        switch tab {
+        case .resources:
+            SasayakiResourcesTab(viewModel: viewModel) {
+                tabChosen = true
+            }
+        case .chapters:
+            SasayakiChaptersTab(player: player)
+        case .settings:
+            SasayakiSettingsTab(player: player)
+        }
+    }
+    
+    static func formatTime(_ seconds: Double) -> String {
+        let total = seconds.isFinite ? Int(max(0, seconds)) : 0
+        let hours = total / 3600
+        let minutes = (total % 3600) / 60
+        if hours > 0 {
+            return String(format: "%d:%02d:%02d", hours, minutes, total % 60)
+        }
+        return String(format: "%d:%02d", minutes, total % 60)
+    }
+}
+
+private struct SasayakiPlaybackHeader: View {
+    @Environment(UserConfig.self) private var userConfig
+    var viewModel: ReaderViewModel
+    let compact: Bool
+    
+    @State private var scrubTime: Double?
+    @State private var isScrubbing = false
+    
+    private var player: SasayakiPlayer {
+        viewModel.sasayakiPlayer
+    }
+    
+    private var title: String {
+        if let title = player.audiobookInfo.title {
+            return title
+        }
+        if let fileName = player.audioFileName {
+            return (fileName as NSString).deletingPathExtension
+        }
+        return viewModel.sasayakiBookTitle
+    }
+    
+    private var chapterTitle: String? {
+        guard let chapter = player.audiobookInfo.currentChapter(at: player.currentTime) else {
+            return nil
+        }
+        let title = chapter.title.trimmingCharacters(in: .whitespacesAndNewlines)
+        return title.isEmpty ? nil : title
+    }
+    
+    private var duration: Double {
+        player.duration.isFinite ? max(0, player.duration) : 0
+    }
+    
+    private var displayedTime: Double {
+        scrubTime ?? min(max(0, player.currentTime), duration)
+    }
+    
+    var body: some View {
+        VStack(spacing: compact ? 4 : 8) {
+            HStack(spacing: 12) {
+                if !compact {
+                    SasayakiCoverView(
+                        artworkData: player.audiobookInfo.artworkData,
+                        fallbackURL: viewModel.sasayakiCoverURL
+                    )
                 }
+                
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(title)
+                        .font(.headline)
+                        .lineLimit(1)
+                    if !compact, let artist = player.audiobookInfo.artist {
+                        Text(artist)
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
+                    }
+                    if let chapterTitle {
+                        Text(chapterTitle)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(compact ? 1 : 2)
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            
+            Slider(value: sliderValue, in: 0...max(duration, 1), onEditingChanged: scrubbingChanged)
+                .disabled(duration <= 0)
+            
+            HStack(spacing: 8) {
+                Text(SasayakiSheet.formatTime(displayedTime))
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                
+                transportControls
+                    .fixedSize()
+                
+                Text(SasayakiSheet.formatTime(duration))
+                    .frame(maxWidth: .infinity, alignment: .trailing)
+            }
+            .font(.caption)
+            .monospacedDigit()
+            .lineLimit(1)
+            .foregroundStyle(.secondary)
+        }
+        .onChange(of: player.currentTime) { _, time in
+            if !isScrubbing, let target = scrubTime, Swift.abs(time - target) < 1.5 {
+                scrubTime = nil
             }
         }
     }
     
-    private static func formatTime(_ seconds: Double) -> String {
-        let total = Int(seconds.rounded(.down))
-        return String(format: "%02d:%02d:%02d", total / 3600, (total % 3600) / 60, total % 60)
+    private var sliderValue: Binding<Double> {
+        Binding {
+            displayedTime
+        } set: { value in
+            if isScrubbing {
+                scrubTime = value
+            } else {
+                player.seek(to: value)
+            }
+        }
+    }
+    
+    private func scrubbingChanged(_ editing: Bool) {
+        isScrubbing = editing
+        guard !editing, let target = scrubTime else {
+            return
+        }
+        // keeps the thumb at the target until the seek lands instead of jumping back
+        player.seek(to: target)
+        Task {
+            try? await Task.sleep(for: .seconds(1))
+            if !isScrubbing {
+                scrubTime = nil
+            }
+        }
+    }
+    
+    private var transportControls: some View {
+        HStack(spacing: 14) {
+            Button {
+                userConfig.verticalWriting ? player.skip(forward: true) : player.skip(forward: false)
+            } label: {
+                Image(systemName: "15.arrow.trianglehead.counterclockwise")
+            }
+            
+            Button {
+                userConfig.verticalWriting ? player.nextCue() : player.prevCue()
+            } label: {
+                Image(systemName: "backward.fill")
+            }
+            
+            Button {
+                player.togglePlayback()
+            } label: {
+                Image(systemName: player.isPlaying ? "pause.fill" : "play.fill")
+                    .font(.system(size: 30))
+                    .frame(width: 34)
+            }
+            
+            Button {
+                userConfig.verticalWriting ? player.prevCue() : player.nextCue()
+            } label: {
+                Image(systemName: "forward.fill")
+            }
+            
+            Button {
+                userConfig.verticalWriting ? player.skip(forward: false) : player.skip(forward: true)
+            } label: {
+                Image(systemName: "15.arrow.trianglehead.clockwise")
+            }
+        }
+        .buttonStyle(.borderless)
+        .font(.title2)
+        .foregroundStyle(.secondary)
+    }
+}
+
+private struct SasayakiCoverView: View {
+    let artworkData: Data?
+    let fallbackURL: URL?
+    
+    @State private var image: CGImage?
+    
+    private struct Source: Equatable {
+        let artworkData: Data?
+        let fallbackURL: URL?
+    }
+    
+    var body: some View {
+        RoundedRectangle(cornerRadius: 8)
+            .fill(.quaternary)
+            .overlay {
+                if let image {
+                    Image(decorative: image, scale: 1)
+                        .resizable()
+                        .scaledToFit()
+                } else {
+                    Image(systemName: "headphones")
+                        .font(.title2)
+                        .foregroundStyle(.secondary)
+                }
+            }
+            .frame(width: 68, height: 68)
+            .clipShape(RoundedRectangle(cornerRadius: 8))
+            .task(id: Source(artworkData: artworkData, fallbackURL: fallbackURL)) {
+                image = Self.thumbnail(artworkData: artworkData, fallbackURL: fallbackURL)
+            }
+    }
+    
+    private static func thumbnail(artworkData: Data?, fallbackURL: URL?) -> CGImage? {
+        let source = artworkData.flatMap { CGImageSourceCreateWithData($0 as CFData, nil) }
+            ?? fallbackURL.flatMap { CGImageSourceCreateWithURL($0 as CFURL, nil) }
+        guard let source else {
+            return nil
+        }
+        let options: [CFString: Any] = [
+            kCGImageSourceCreateThumbnailFromImageAlways: true,
+            kCGImageSourceCreateThumbnailWithTransform: true,
+            kCGImageSourceThumbnailMaxPixelSize: 240
+        ]
+        return CGImageSourceCreateThumbnailAtIndex(source, 0, options as CFDictionary)
     }
 }

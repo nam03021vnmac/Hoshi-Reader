@@ -671,7 +671,7 @@ struct ReaderView: View {
                         Label("Statistics", systemImage: "chart.bar.xaxis")
                     }
                     
-                    if userConfig.enableSasayaki && viewModel.sasayakiPlayer.hasMatch {
+                    if userConfig.enableSasayaki {
                         Button {
                             viewModel.activeSheet = .sasayaki
                         } label: {
@@ -737,13 +737,11 @@ struct ReaderView: View {
                     .presentationDetents([.medium, .large])
                     .sheetFrame()
             case .sasayaki:
-                SasayakiSheet(player: viewModel.sasayakiPlayer, onImportAudio: { url in
-                    try viewModel.importSasayakiAudio(from: url)
-                }) {
+                SasayakiSheet(viewModel: viewModel) {
                     viewModel.activeSheet = nil
                 }
-                .presentationDetents([.medium])
-                .sheetFrame()
+                .presentationDetents([.medium, .large])
+                .sheetFrame(minHeight: 600)
             }
         }
         .task(id: viewModel.isTracking) {
@@ -811,7 +809,7 @@ struct ReaderView: View {
             viewModel.isPaused = true
         }
         .onDisappear {
-            viewModel.sasayakiPlayer.teardown()
+            viewModel.handleSasayakiReaderClosed()
             Task {
                 await viewModel.flushAutoSync()
             }

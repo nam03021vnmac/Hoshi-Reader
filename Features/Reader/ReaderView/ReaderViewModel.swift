@@ -123,6 +123,7 @@ class ReaderViewModel {
     // sasayaki
     var sasayakiPlayer: SasayakiPlayer!
     var wasPaused = false
+    private var pendingSasayakiCueRefresh = false
     
     // sync
     let autoSyncEnabled: Bool
@@ -291,6 +292,10 @@ class ReaderViewModel {
             sasayakiPlayer.restoreAudio()
         }
         isLoading = false
+        if pendingSasayakiCueRefresh {
+            pendingSasayakiCueRefresh = false
+            bridge.send(.applySasayakiCues(sasayakiPlayer.cues(for: index)))
+        }
         sasayakiPlayer.handleRestoreCompleted(currentIndex: index)
         if let highlight = pendingSearchHighlight {
             pendingSearchHighlight = nil
@@ -305,6 +310,80 @@ class ReaderViewModel {
     
     func importSasayakiAudio(from url: URL) throws {
         try sasayakiPlayer.importAudio(from: url)
+    }
+    
+    var sasayakiBookTitle: String {
+        sasayakiPlayer.bookMetadata?.displayTitle ?? book.displayTitle
+    }
+    
+    var sasayakiCoverURL: URL? {
+        sasayakiPlayer.bookMetadata?.coverURL ?? book.coverURL
+    }
+    
+    var sasayakiCharacterCount: Int {
+        bookInfo.characterCount
+    }
+    
+    var isSasayakiTranscribing: Bool {
+        SasayakiMatchCoordinator.shared.isRunning(root: rootURL)
+    }
+    
+    func loadSasayakiTranscript() -> SasayakiTranscript? {
+        BookStorage.loadSasayakiTranscript(root: rootURL)
+    }
+    
+    func reloadSasayakiMatch() {
+        sasayakiPlayer.applyMatch(BookStorage.loadSasayakiMatch(root: rootURL))
+        // before the first chapter load, that load picks up the new cues itself
+        guard bridge.chapterURL != nil, let url = currentChapterURL else {
+            return
+        }
+        // keeps the cues right if the web content process restarts
+        bridge.updateState(
+            url: url,
+            progress: bridge.progress,
+            sasayakiCues: sasayakiPlayer.hasMatch ? sasayakiPlayer.cues(for: index) : nil,
+            highlights: bridge.highlights
+        )
+        if isLoading {
+            // a chapter load in flight may still apply the old cues, so wait for it to finish
+            pendingSasayakiCueRefresh = true
+        } else {
+            bridge.send(.applySasayakiCues(sasayakiPlayer.cues(for: index)))
+        }
+    }
+    
+    func matchSasayakiSubtitles(from url: URL) throws {
+        _ = try SasayakiMatchCoordinator.shared.runSubtitleMatch(rootURL: rootURL, srtURL: url)
+        reloadSasayakiMatch()
+    }
+    
+    func startSasayakiTranscription() {
+        guard #available(iOS 26.0, macOS 26.0, *), let audioURL = sasayakiPlayer.audioURL else {
+            return
+        }
+        SasayakiMatchCoordinator.shared.startTranscription(rootURL: rootURL, audioURL: audioURL) { [weak self] in
+            self?.reloadSasayakiMatch()
+            self?.sasayakiPlayer.updateIdleTimerDisabled()
+        }
+        sasayakiPlayer.updateIdleTimerDisabled()
+    }
+    
+    func pauseSasayakiTranscription() {
+        SasayakiMatchCoordinator.shared.cancel(root: rootURL)
+    }
+    
+    func clearSasayakiTranscript() {
+        SasayakiMatchCoordinator.shared.clearTranscript(rootURL: rootURL)
+    }
+    
+    func clearSasayakiAudio() {
+        sasayakiPlayer.clearAudio()
+    }
+    
+    func handleSasayakiReaderClosed() {
+        SasayakiMatchCoordinator.shared.cancel(root: rootURL)
+        sasayakiPlayer.teardown()
     }
     
     func syncOnOpen() async {

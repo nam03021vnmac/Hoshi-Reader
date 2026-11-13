@@ -363,6 +363,17 @@
         }
       }
     },
+    "about %lld min left" : {
+      "comment" : "Context: Sasayaki audiobook feature screens. Surrounding UI includes setup instructions, SRT/audio matching, playback controls, command center options, and Sasayaki theme settings. Preserve Markdown and product names.",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "约剩 %lld 分钟"
+          }
+        }
+      }
+    },
     "Add Shelf" : {
       "comment" : "Context: Bookshelf and shelf management. Surrounding UI includes book lists, empty states, shelf actions, sort controls, and book context-menu confirmations.",
       "localizations" : {
@@ -392,6 +403,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "高级"
+          }
+        }
+      }
+    },
+    "Aligning…" : {
+      "comment" : "Context: Sasayaki audiobook feature screens. Surrounding UI includes setup instructions, SRT/audio matching, playback controls, command center options, and Sasayaki theme settings. Preserve Markdown and product names.",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "正在匹配正文…"
           }
         }
       }
@@ -478,6 +500,17 @@
         }
       }
     },
+    "Another book is being transcribed." : {
+      "comment" : "Context: Sasayaki audiobook feature screens. Surrounding UI includes setup instructions, SRT/audio matching, playback controls, command center options, and Sasayaki theme settings. Preserve Markdown and product names.",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "正在转写另一本书。"
+          }
+        }
+      }
+    },
     "App directory not found" : {
       "localizations" : {
         "zh-Hans" : {
@@ -523,6 +556,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "音频"
+          }
+        }
+      }
+    },
+    "Audiobook" : {
+      "comment" : "Context: Sasayaki audiobook feature screens. Surrounding UI includes setup instructions, SRT/audio matching, playback controls, command center options, and Sasayaki theme settings. Preserve Markdown and product names.",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "有声书"
           }
         }
       }
@@ -728,6 +772,17 @@
         }
       }
     },
+    "Chapter" : {
+      "comment" : "Context: Sasayaki audiobook feature screens. Surrounding UI includes setup instructions, SRT/audio matching, playback controls, command center options, and Sasayaki theme settings. Preserve Markdown and product names.",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "章节"
+          }
+        }
+      }
+    },
     "Chapter Swipe Distance" : {
       "comment" : "Context: Settings > Appearance. Surrounding UI is a grouped form for reader theme, text, layout, display, and popup controls.",
       "localizations" : {
@@ -849,6 +904,28 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "清除缓存?"
+          }
+        }
+      }
+    },
+    "Clear Transcription" : {
+      "comment" : "Context: Sasayaki audiobook feature screens. Surrounding UI includes setup instructions, SRT/audio matching, playback controls, command center options, and Sasayaki theme settings. Preserve Markdown and product names.",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "清除转写"
+          }
+        }
+      }
+    },
+    "Clear transcription?" : {
+      "comment" : "Context: Sasayaki audiobook feature screens. Surrounding UI includes setup instructions, SRT/audio matching, playback controls, command center options, and Sasayaki theme settings. Preserve Markdown and product names.",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "清除转写数据？"
           }
         }
       }
@@ -1020,8 +1097,30 @@
     "Cover Updated" : {
 
     },
+    "Coverage" : {
+      "comment" : "Context: Sasayaki audiobook feature screens. Surrounding UI includes setup instructions, SRT/audio matching, playback controls, command center options, and Sasayaki theme settings. Preserve Markdown and product names.",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "覆盖率"
+          }
+        }
+      }
+    },
     "Covers" : {
 
+    },
+    "Current chapter" : {
+      "comment" : "Context: Sasayaki audiobook feature screens. Surrounding UI includes setup instructions, SRT/audio matching, playback controls, command center options, and Sasayaki theme settings. Preserve Markdown and product names.",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "当前章节"
+          }
+        }
+      }
     },
     "Current Match" : {
       "comment" : "Context: Sasayaki audiobook feature screens. Surrounding UI includes setup instructions, SRT/audio matching, playback controls, command center options, and Sasayaki theme settings. Preserve Markdown and product names.",
@@ -1324,6 +1423,17 @@
         }
       }
     },
+    "Downloading model… %lld%%" : {
+      "comment" : "Context: Sasayaki audiobook feature screens. Surrounding UI includes setup instructions, SRT/audio matching, playback controls, command center options, and Sasayaki theme settings. Preserve Markdown and product names.",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "正在下载模型… %lld%%"
+          }
+        }
+      }
+    },
     "Downloading…" : {
       "comment" : "Context: Settings > Advanced > PDF. Surrounding UI is a grouped form for PDF display and OCR (text recognition) options.",
       "localizations" : {
@@ -1370,6 +1480,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "导出"
+          }
+        }
+      }
+    },
+    "Export SRT" : {
+      "comment" : "Context: Sasayaki audiobook feature screens. Surrounding UI includes setup instructions, SRT/audio matching, playback controls, command center options, and Sasayaki theme settings. Preserve Markdown and product names.",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "导出 SRT"
           }
         }
       }
@@ -1592,6 +1713,17 @@
         }
       }
     },
+    "Import an audiobook using the Audiobook section above." : {
+      "comment" : "Context: Sasayaki audiobook feature screens. Surrounding UI includes setup instructions, SRT/audio matching, playback controls, command center options, and Sasayaki theme settings. Preserve Markdown and product names.",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "请先在上方“有声书”区域导入音频。"
+          }
+        }
+      }
+    },
     "Import an EPUB using the %@ button to start reading." : {
       "comment" : "Context: Bookshelf and shelf management. Surrounding UI includes book lists, empty states, shelf actions, sort controls, and book context-menu confirmations.",
       "localizations" : {
@@ -1781,6 +1913,17 @@
     "Left" : {
 
     },
+    "less than 1 min left" : {
+      "comment" : "Context: Sasayaki audiobook feature screens. Surrounding UI includes setup instructions, SRT/audio matching, playback controls, command center options, and Sasayaki theme settings. Preserve Markdown and product names.",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "剩余不到 1 分钟"
+          }
+        }
+      }
+    },
     "Light" : {
       "comment" : "Context: Settings > Appearance. Surrounding UI is a grouped form for reader theme, text, layout, display, and popup controls.",
       "localizations" : {
@@ -1951,6 +2094,17 @@
         }
       }
     },
+    "Match Again" : {
+      "comment" : "Context: Sasayaki audiobook feature screens. Surrounding UI includes setup instructions, SRT/audio matching, playback controls, command center options, and Sasayaki theme settings. Preserve Markdown and product names.",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "重新匹配"
+          }
+        }
+      }
+    },
     "Match Rate" : {
       "comment" : "Context: Reader, chapters, highlights, and reading statistics screens. Surrounding UI includes jump-to-character alerts, progress rows, and reading metric labels.",
       "localizations" : {
@@ -2074,6 +2228,17 @@
         }
       }
     },
+    "No chapters found in this audiobook." : {
+      "comment" : "Context: Sasayaki audiobook feature screens. Surrounding UI includes setup instructions, SRT/audio matching, playback controls, command center options, and Sasayaki theme settings. Preserve Markdown and product names.",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "这个有声书没有可用章节。"
+          }
+        }
+      }
+    },
     "No data received from Anki. Please try again." : {
       "localizations" : {
         "zh-Hans" : {
@@ -2107,6 +2272,17 @@
     },
     "No Images" : {
 
+    },
+    "No match" : {
+      "comment" : "Context: Sasayaki audiobook feature screens. Surrounding UI includes setup instructions, SRT/audio matching, playback controls, command center options, and Sasayaki theme settings. Preserve Markdown and product names.",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "未匹配"
+          }
+        }
+      }
     },
     "None" : {
       "comment" : "Context: Shared Hoshi Reader label or action. Surrounding UI may be a settings row, alert button, toolbar item, or reader context menu.",
@@ -2284,6 +2460,17 @@
         }
       }
     },
+    "Only clears transcription data, match is kept." : {
+      "comment" : "Context: Sasayaki audiobook feature screens. Surrounding UI includes setup instructions, SRT/audio matching, playback controls, command center options, and Sasayaki theme settings. Preserve Markdown and product names.",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "仅清除转写数据，保留当前匹配结果。"
+          }
+        }
+      }
+    },
     "Only used for books set to the manga model in the reader menu" : {
       "comment" : "Context: Settings > Advanced > PDF. Surrounding UI is a grouped form for PDF display and OCR (text recognition) options.",
       "localizations" : {
@@ -2398,6 +2585,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "不支持受密码保护的 PDF"
+          }
+        }
+      }
+    },
+    "Pause" : {
+      "comment" : "Context: Sasayaki audiobook feature screens. Surrounding UI includes setup instructions, SRT/audio matching, playback controls, command center options, and Sasayaki theme settings. Preserve Markdown and product names.",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "暂停"
           }
         }
       }
@@ -2530,6 +2728,17 @@
     "Read" : {
 
     },
+    "Reader Controls" : {
+      "comment" : "Context: Sasayaki audiobook feature screens. Surrounding UI includes setup instructions, SRT/audio matching, playback controls, command center options, and Sasayaki theme settings. Preserve Markdown and product names.",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "阅读器控制"
+          }
+        }
+      }
+    },
     "Reading" : {
       "localizations" : {
         "zh-Hans" : {
@@ -2624,6 +2833,17 @@
         }
       }
     },
+    "Remove" : {
+      "comment" : "Context: Sasayaki audiobook feature screens. Surrounding UI includes setup instructions, SRT/audio matching, playback controls, command center options, and Sasayaki theme settings. Preserve Markdown and product names.",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "移除"
+          }
+        }
+      }
+    },
     "Rename" : {
       "comment" : "Context: Bookshelf and shelf management. Surrounding UI includes book lists, empty states, shelf actions, sort controls, and book context-menu confirmations.",
       "localizations" : {
@@ -2673,6 +2893,17 @@
     "Reset Time" : {
 
     },
+    "Resources" : {
+      "comment" : "Context: Sasayaki audiobook feature screens. Surrounding UI includes setup instructions, SRT/audio matching, playback controls, command center options, and Sasayaki theme settings. Preserve Markdown and product names.",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "资源"
+          }
+        }
+      }
+    },
     "Restore" : {
       "comment" : "Context: Settings > Backup. Surrounding UI offers backup/restore actions for books and dictionaries, with restore overwrite warnings.",
       "localizations" : {
@@ -2691,6 +2922,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "恢复会覆盖当前集合"
+          }
+        }
+      }
+    },
+    "Resume" : {
+      "comment" : "Context: Sasayaki audiobook feature screens. Surrounding UI includes setup instructions, SRT/audio matching, playback controls, command center options, and Sasayaki theme settings. Preserve Markdown and product names.",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "继续转写"
           }
         }
       }
@@ -2769,6 +3011,17 @@
     },
     "Search book" : {
 
+    },
+    "Select a .mp3, .m4b, or .m4a audiobook" : {
+      "comment" : "Context: Sasayaki audiobook feature screens. Surrounding UI includes setup instructions, SRT/audio matching, playback controls, command center options, and Sasayaki theme settings. Preserve Markdown and product names.",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "选择 .mp3、.m4b 或 .m4a 有声书"
+          }
+        }
+      }
     },
     "Selector" : {
       "comment" : "Context: Dictionary custom CSS editor. Surrounding UI shows a menu of dictionary CSS selectors that can be inserted into the editor.",
@@ -3171,6 +3424,17 @@
         }
       }
     },
+    "Subtitles" : {
+      "comment" : "Context: Sasayaki audiobook feature screens. Surrounding UI includes setup instructions, SRT/audio matching, playback controls, command center options, and Sasayaki theme settings. Preserve Markdown and product names.",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "字幕"
+          }
+        }
+      }
+    },
     "Swipe Threshold" : {
       "comment" : "Context: Settings > Appearance. Surrounding UI is a grouped form for reader theme, text, layout, display, and popup controls.",
       "localizations" : {
@@ -3470,6 +3734,105 @@
     "Total Time" : {
 
     },
+    "Transcribe" : {
+      "comment" : "Context: Sasayaki audiobook feature screens. Surrounding UI includes setup instructions, SRT/audio matching, playback controls, command center options, and Sasayaki theme settings. Preserve Markdown and product names.",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "开始转写"
+          }
+        }
+      }
+    },
+    "Transcribe Japanese audio and match it to the book." : {
+      "comment" : "Context: Sasayaki audiobook feature screens. Surrounding UI includes setup instructions, SRT/audio matching, playback controls, command center options, and Sasayaki theme settings. Preserve Markdown and product names.",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "转写日语音频并匹配正文。"
+          }
+        }
+      }
+    },
+    "Transcribed" : {
+      "comment" : "Context: Sasayaki audiobook feature screens. Surrounding UI includes setup instructions, SRT/audio matching, playback controls, command center options, and Sasayaki theme settings. Preserve Markdown and product names.",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已转写"
+          }
+        }
+      }
+    },
+    "Transcribed %@ / %@" : {
+      "comment" : "Context: Sasayaki audiobook feature screens. Surrounding UI includes setup instructions, SRT/audio matching, playback controls, command center options, and Sasayaki theme settings. Preserve Markdown and product names.",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已转写 %1$@ / %2$@"
+          }
+        }
+      }
+    },
+    "Transcribing %@ / %@" : {
+      "comment" : "Context: Sasayaki audiobook feature screens. Surrounding UI includes setup instructions, SRT/audio matching, playback controls, command center options, and Sasayaki theme settings. Preserve Markdown and product names.",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "正在转写 %1$@ / %2$@"
+          }
+        }
+      }
+    },
+    "Transcribing…" : {
+      "comment" : "Context: Sasayaki audiobook feature screens. Surrounding UI includes setup instructions, SRT/audio matching, playback controls, command center options, and Sasayaki theme settings. Preserve Markdown and product names.",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "正在转写…"
+          }
+        }
+      }
+    },
+    "Transcription" : {
+      "comment" : "Context: Sasayaki audiobook feature screens. Surrounding UI includes setup instructions, SRT/audio matching, playback controls, command center options, and Sasayaki theme settings. Preserve Markdown and product names.",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "转写"
+          }
+        }
+      }
+    },
+    "Transcription complete" : {
+      "comment" : "Context: Sasayaki audiobook feature screens. Surrounding UI includes setup instructions, SRT/audio matching, playback controls, command center options, and Sasayaki theme settings. Preserve Markdown and product names.",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "转写完成"
+          }
+        }
+      }
+    },
+    "Transcription paused" : {
+      "comment" : "Context: Sasayaki audiobook feature screens. Surrounding UI includes setup instructions, SRT/audio matching, playback controls, command center options, and Sasayaki theme settings. Preserve Markdown and product names.",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "转写已暂停"
+          }
+        }
+      }
+    },
     "Turn on Upscale Images for a book in the reader menu to sharpen its low-resolution pages. Pages are processed on this device and saved (%@ used), which uses more battery while reading new pages." : {
       "comment" : "Context: Settings > Advanced > PDF. Surrounding UI is a grouped form for PDF display and OCR (text recognition) options.",
       "localizations" : {
@@ -3627,6 +3990,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "支持 Yomitan JSON 音频源"
+          }
+        }
+      }
+    },
+    "You can also match from the **Sasayaki** sheet in the reader." : {
+      "comment" : "Context: Sasayaki audiobook feature screens. Surrounding UI includes setup instructions, SRT/audio matching, playback controls, command center options, and Sasayaki theme settings. Preserve Markdown and product names.",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "也可以在阅读器的 **Sasayaki** 面板中进行匹配。"
           }
         }
       }

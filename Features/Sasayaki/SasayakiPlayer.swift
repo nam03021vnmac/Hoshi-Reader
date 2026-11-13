@@ -126,9 +126,12 @@ class SasayakiPlayer {
     var interruptionObserver: NSObjectProtocol?
     var audioURL: URL?
     var artwork: MPMediaItemArtwork?
+    var audiobookInfo: SasayakiAudiobookInfo = .empty
+    private var audiobookInfoGeneration = 0
     
     var hasAudio: Bool { player != nil }
     var hasMatch: Bool { matchData != nil }
+    var audioFileName: String? { audioURL?.lastPathComponent }
     
     let bookMetadata: BookMetadata?
     let rootURL: URL
@@ -146,15 +149,11 @@ class SasayakiPlayer {
         self.bookMetadata = BookStorage.loadMetadata(root: rootURL)
         
         matchData = BookStorage.loadSasayakiMatch(root: rootURL)
-        if !hasMatch {
-            return
-        }
         timeline = CueTimeline(match: matchData)
         reloadPlayback()
     }
     
     func reloadPlayback() {
-        guard hasMatch else { return }
         isRestoring = true
         playback = BookStorage.loadSasayakiPlayback(root: rootURL) ?? SasayakiPlaybackData(lastPosition: 0)
         currentTime = playback.lastPosition
@@ -175,6 +174,28 @@ class SasayakiPlayer {
         audioURL = url
         errorMessage = nil
         setupPlayer(url: url)
+    }
+    
+    func clearAudio() {
+        teardown()
+        playback.audioBookmark = nil
+        savePlayback()
+        errorMessage = nil
+    }
+    
+    func applyMatch(_ match: SasayakiMatchData?) {
+        let resume = pausedOnImage
+        cancelImagePause()
+        clearDisplayedCue()
+        matchData = match
+        timeline = CueTimeline(match: match)
+        lastCue = nil
+        pendingCue = nil
+        pendingImage = nil
+        imageResumeCue = nil
+        if resume {
+            startPlayback()
+        }
     }
     
     func cues(for chapterIndex: Int) -> String {
@@ -203,10 +224,14 @@ class SasayakiPlayer {
     }
     
     func updateIdleTimerDisabled() {
-        Platform.isIdleTimerDisabled = isPlaying && autoScroll
+        Platform.isIdleTimerDisabled = (isPlaying && autoScroll) || SasayakiMatchCoordinator.shared.isBusy
     }
     
     func nextCue() {
+        guard hasMatch else {
+            skip(forward: true)
+            return
+        }
         stopPlaybackTime = nil
         let next = timeline.nextCue(after: currentCue?.startTime ?? currentTime - delay)
         guard let next else { return }
@@ -214,6 +239,10 @@ class SasayakiPlayer {
     }
     
     func prevCue() {
+        guard hasMatch else {
+            skip(forward: false)
+            return
+        }
         stopPlaybackTime = nil
         let previous = timeline.prevCue(before: currentCue?.startTime ?? max(0, currentTime - delay)) ?? 0
         seek(seconds: previous + delay)
@@ -229,8 +258,17 @@ class SasayakiPlayer {
         }
     }
     
+    func seek(to seconds: Double) {
+        stopPlaybackTime = nil
+        var target = max(0, seconds)
+        if duration > 0 {
+            target = min(target, duration)
+        }
+        seek(seconds: target)
+    }
+    
     func handleRestoreCompleted(currentIndex: Int) {
-        guard hasMatch, chapterTransition else { return }
+        guard chapterTransition else { return }
         
         if let image = pendingImage, image.chapterIndex == currentIndex {
             chapterTransition = false
@@ -269,11 +307,12 @@ class SasayakiPlayer {
     }
     
     func prepareTransition() {
-        shouldResume = isPlaying
+        // without cues there is nothing to re-sync after the chapter loads, so playback continues
+        shouldResume = hasMatch && isPlaying
         chapterTransition = true
         stopPlaybackTime = nil
         clearDisplayedCue()
-        if isPlaying {
+        if shouldResume {
             pausePlayback()
         }
     }
@@ -331,6 +370,8 @@ class SasayakiPlayer {
         duration = 0
         stopPlaybackTime = nil
         artwork = nil
+        audiobookInfo = .empty
+        audiobookInfoGeneration += 1
         
         clearDisplayedCue()
         #if os(iOS)
@@ -520,7 +561,7 @@ class SasayakiPlayer {
         }
         #endif
         
-        setupArtwork(from: item.asset)
+        loadAudiobookInfo(from: item.asset)
     }
     
     private func setupNowPlayingSession() {
@@ -741,26 +782,28 @@ class SasayakiPlayer {
         }
     }
     
-    private func setupArtwork(from asset: AVAsset) {
+    private func loadAudiobookInfo(from asset: AVAsset) {
+        audiobookInfoGeneration += 1
+        let generation = audiobookInfoGeneration
         Task {
-            let metadata = try? await asset.load(.metadata)
-            let artworkItem = AVMetadataItem
-                .metadataItems(from: metadata ?? [], filteredByIdentifier: .commonIdentifierArtwork)
-                .first
-            let artworkData = try? await artworkItem?.load(.dataValue)
+            let info = await SasayakiAudiobookInfo.load(from: asset)
+            // the audio was swapped or removed while loading
+            guard generation == audiobookInfoGeneration else { return }
+            audiobookInfo = info
+            if duration == 0, let seconds = info.durationSeconds {
+                duration = seconds
+            }
             
             let image =
-            artworkData.flatMap(PlatformImage.init(data:)) ??
+            info.artworkData.flatMap(PlatformImage.init(data:)) ??
             bookMetadata?.coverURL
                 .flatMap { try? Data(contentsOf: $0) }
                 .flatMap(PlatformImage.init(data:))
             
             guard let image else { return }
             
-            await MainActor.run {
-                artwork = Self.makeArtwork(from: image)
-                updateNowPlayingInfo()
-            }
+            artwork = Self.makeArtwork(from: image)
+            updateNowPlayingInfo()
         }
     }
     

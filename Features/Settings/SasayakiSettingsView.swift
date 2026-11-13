@@ -26,6 +26,7 @@ struct SasayakiSettingsView: View {
                         Text("Long press a book and choose **Match**.")
                         #endif
                         Text("Choose the **.srt** and press **Match**. Matching only has to be done once.")
+                        Text("You can also match from the **Sasayaki** sheet in the reader.")
                         Text("You can now open the book and choose **Sasayaki** from the context menu.")
                         Text("Load the audiobook and press play, lines will be highlighted as the audiobook plays.")
                         Text("**[More...](https://github.com/Manhhao/Hoshi-Reader/blob/main/SASAYAKI.md)**")
