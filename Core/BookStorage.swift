@@ -22,15 +22,12 @@ nonisolated enum FileNames: Sendable {
     static let highlights = "highlights.json"
     static let pdfInfo = "pdfinfo.json"
     static let textLayerDirectory = "textlayer"
+    static let pages = "pages.json"
 }
 
-struct BookStorage {
-    nonisolated static let migratedDocumentsKey = "migratedToAppSupport"
-    nonisolated static let migratedBooksKey = "migratedBooks"
-    
+nonisolated struct BookStorage {
     static var migrationsComplete: Bool {
-        let defaults = UserDefaults.standard
-        return defaults.bool(forKey: migratedDocumentsKey) && defaults.bool(forKey: migratedBooksKey)
+        return true
     }
     
     nonisolated private static let appDirectory: URL? = {
@@ -55,133 +52,6 @@ struct BookStorage {
             throw BookStorageError.appDirectoryNotFound
         }
         return appDirectory
-    }
-    
-    nonisolated static func migrateFromDocuments() {
-        #if os(macOS)
-        // the Documents layout predates the Mac app, so there is nothing to move
-        UserDefaults.standard.set(true, forKey: Self.migratedDocumentsKey)
-        #else
-        guard let appSupport = try? getAppDirectory(),
-              let documents = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first else { return }
-        
-        let migrated = UserDefaults.standard.bool(forKey: Self.migratedDocumentsKey)
-        guard !migrated else { return }
-        
-        let items = ["Books", "Fonts", "Dictionaries", "Audio", "anki_words.json", "anki_config.json"]
-        for item in items {
-            let src = documents.appendingPathComponent(item)
-            let dst = appSupport.appendingPathComponent(item)
-            guard FileManager.default.fileExists(atPath: src.path(percentEncoded: false)),
-                  !FileManager.default.fileExists(atPath: dst.path(percentEncoded: false)) else { continue }
-            try? FileManager.default.moveItem(at: src, to: dst)
-        }
-        
-        UserDefaults.standard.set(true, forKey: Self.migratedDocumentsKey)
-        #endif
-    }
-    
-    nonisolated static func migrateBooks() {
-        guard !UserDefaults.standard.bool(forKey: Self.migratedBooksKey) else {
-            return
-        }
-        
-        guard let booksDir = try? getBooksDirectory(),
-              FileManager.default.fileExists(atPath: booksDir.path(percentEncoded: false)) else {
-            UserDefaults.standard.set(true, forKey: Self.migratedBooksKey)
-            return
-        }
-        
-        guard let contents = try? FileManager.default.contentsOfDirectory(
-            at: booksDir,
-            includingPropertiesForKeys: [.isDirectoryKey],
-            options: [.skipsHiddenFiles]
-        ) else {
-            // transient read failure — leave the flag unset so we retry next launch
-            return
-        }
-        
-        for folder in contents {
-            guard (try? folder.resourceValues(forKeys: [.isDirectoryKey]))?.isDirectory == true else { continue }
-            
-            let destination = folder.appendingPathComponent(folder.lastPathComponent).appendingPathExtension("epub")
-            guard !FileManager.default.fileExists(atPath: destination.path(percentEncoded: false)) else { continue }
-            
-            let mimetype = folder.appendingPathComponent("mimetype")
-            guard FileManager.default.fileExists(atPath: mimetype.path(percentEncoded: false)) else { continue }
-            
-            let metadata = loadMetadata(root: folder)
-            let coverName = metadata?.cover.map { URL(fileURLWithPath: $0).lastPathComponent }
-            guard (try? repackEpub(folder: folder, destination: destination, coverName: coverName)) != nil else {
-                continue
-            }
-            
-            if let metadata {
-                var updated = BookMetadata(
-                    id: metadata.id,
-                    title: metadata.title,
-                    epub: folder.lastPathComponent + ".epub",
-                    cover: metadata.cover,
-                    folder: metadata.folder,
-                    lastAccess: metadata.lastAccess
-                )
-                updated.renamedTitle = metadata.renamedTitle
-                try? saveMetadata(updated, inside: folder)
-            }
-        }
-        
-        UserDefaults.standard.set(true, forKey: Self.migratedBooksKey)
-    }
-    
-    nonisolated private static func repackEpub(folder: URL, destination: URL, coverName: String?) throws {
-        let tempURL = destination.appendingPathExtension("tmp")
-        try? FileManager.default.removeItem(at: tempURL)
-        let archive = try Archive(url: tempURL, accessMode: .create, pathEncoding: .utf8)
-        
-        let mimetype = folder.appendingPathComponent("mimetype")
-        try archive.addEntry(with: "mimetype", fileURL: mimetype, compressionMethod: .none)
-        
-        guard let enumerator = FileManager.default.enumerator(
-            at: folder,
-            includingPropertiesForKeys: [.isRegularFileKey, .isDirectoryKey],
-            options: [.skipsHiddenFiles]
-        ) else {
-            return
-        }
-        
-        var filesToRemove: [URL] = []
-        var dirsToRemove: [URL] = []
-        for case let url as URL in enumerator {
-            let relPath = url.standardizedFileURL.pathComponents
-                .dropFirst(folder.standardizedFileURL.pathComponents.count)
-                .joined(separator: "/")
-            
-            let isDir = (try? url.resourceValues(forKeys: [.isDirectoryKey]))?.isDirectory ?? false
-            if isDir {
-                dirsToRemove.append(url)
-                continue
-            }
-            
-            if relPath == "mimetype" || url.pathExtension == "json" || url.pathExtension == "tmp" {
-                continue
-            }
-            
-            try archive.addEntry(with: relPath, fileURL: url, compressionMethod: .deflate)
-            
-            if relPath != coverName {
-                filesToRemove.append(url)
-            }
-        }
-        
-        try FileManager.default.moveItem(at: tempURL, to: destination)
-        
-        filesToRemove.append(mimetype)
-        for file in filesToRemove {
-            try? FileManager.default.removeItem(at: file)
-        }
-        for dir in dirsToRemove.sorted(by: { $0.path.count > $1.path.count }) {
-            try? FileManager.default.removeItem(at: dir)
-        }
     }
     
     nonisolated static func getBooksDirectory() throws -> URL {
@@ -288,29 +158,89 @@ struct BookStorage {
         try data.write(to: directory.appendingPathComponent(FileNames.metadata), options: .atomic)
     }
     
-    static func loadStatistics(root: URL) -> [Statistics]? {
-        load([Statistics].self, from: root.appendingPathComponent(FileNames.statistics))
-    }
-    
     static func loadSasayakiMatch(root: URL) -> SasayakiMatchData? {
         load(SasayakiMatchData.self, from: root.appendingPathComponent(FileNames.sasayakiMatch))
     }
     
+    @MainActor
     static func loadSasayakiTranscript(root: URL) -> SasayakiTranscript? {
         load(SasayakiTranscript.self, from: root.appendingPathComponent(FileNames.sasayakiTranscript))
     }
     
+    @MainActor
     static func loadSasayakiPlayback(root: URL) -> SasayakiPlaybackData? {
         load(SasayakiPlaybackData.self, from: root.appendingPathComponent(FileNames.sasayakiPlayback))
     }
     
-    static func loadHighlights(root: URL) -> [Highlight]? {
-        load([Highlight].self, from: root.appendingPathComponent(FileNames.highlights))
+    @MainActor
+    static func savePlayback(_ playback: inout SasayakiPlaybackData, root: URL) throws -> Bool {
+        let stored = loadSasayakiPlayback(root: root)
+        let changed = stored?.lastPosition != playback.lastPosition || stored?.delay != playback.delay || stored?.rate != playback.rate
+        playback.modified = changed ? Date.now.milliseconds : stored?.modified
+        try save(playback, inside: root, as: FileNames.sasayakiPlayback)
+        return changed
     }
     
-    static func loadShelves() -> [BookShelf]? {
-        guard let booksDirectory = try? getBooksDirectory() else { return nil }
-        return load([BookShelf].self, from: booksDirectory.appendingPathComponent(FileNames.shelves))
+    static func loadHighlightRecords(root: URL) -> [String: Timestamped<Highlight?>] {
+        let url = root.appendingPathComponent(FileNames.highlights)
+        if let records = load([String: Timestamped<Highlight?>].self, from: url) {
+            return records
+        }
+        let highlights = load([Highlight].self, from: url) ?? []
+        return Dictionary(uniqueKeysWithValues: highlights.map { ($0.id.uuidString, Timestamped(modified: $0.createdAt.milliseconds, value: $0)) })
+    }
+    
+    static func loadHighlights(root: URL) -> [Highlight] {
+        loadHighlightRecords(root: root).values.compactMap(\.value).sorted { $0.createdAt < $1.createdAt }
+    }
+    
+    static func saveHighlights(_ highlights: [Highlight], root: URL) throws {
+        var records = loadHighlightRecords(root: root)
+        let now = Date.now.milliseconds
+        let ids = Set(highlights.map(\.id.uuidString))
+        for (id, record) in records where record.value != nil && !ids.contains(id) {
+            records[id] = Timestamped(modified: now, value: nil)
+        }
+        for highlight in highlights {
+            let id = highlight.id.uuidString
+            if records[id] == nil || (records[id]!.value != nil && records[id]!.value != highlight) {
+                records[id] = Timestamped(modified: now, value: highlight)
+            }
+        }
+        try save(records, inside: root, as: FileNames.highlights)
+    }
+    
+    static func loadShelfList() -> [String: Timestamped<Int?>] {
+        guard let booksDirectory = try? getBooksDirectory() else { return [:] }
+        let url = booksDirectory.appendingPathComponent(FileNames.shelves)
+        if let shelves = load([String: Timestamped<Int?>].self, from: url) {
+            return shelves
+        }
+        
+        guard let legacy = load([BookShelf].self, from: url) else { return [:] }
+        var shelves: [String: Timestamped<Int?>] = [:]
+        do {
+            let folders = try FileManager.default.contentsOfDirectory(at: booksDirectory, includingPropertiesForKeys: nil)
+            var books = Dictionary(uniqueKeysWithValues: folders.compactMap { loadMetadata(root: $0) }.map { ($0.id, $0) })
+            for (index, shelf) in legacy.enumerated() {
+                let name = shelf.name.precomposedStringWithCanonicalMapping
+                shelves[name] = Timestamped(modified: 0, value: index)
+                for id in shelf.bookIds where books[id] != nil {
+                    var membership = books[id]!.shelves ?? [:]
+                    membership[name] = Timestamped(modified: 0, value: true)
+                    books[id]!.shelves = membership
+                }
+            }
+            for book in books.values where book.shelves != nil {
+                try saveMetadata(book, inside: booksDirectory.appendingPathComponent(book.folder))
+            }
+            try saveShelfList(shelves)
+        } catch {}
+        return shelves
+    }
+    
+    static func saveShelfList(_ shelves: [String: Timestamped<Int?>]) throws {
+        try save(shelves, inside: getBooksDirectory(), as: FileNames.shelves)
     }
     
     static func loadAllBooks() throws -> [BookMetadata] {

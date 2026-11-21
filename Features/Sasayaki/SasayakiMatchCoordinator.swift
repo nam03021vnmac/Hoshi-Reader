@@ -50,7 +50,7 @@ final class SasayakiMatchCoordinator {
         let srtData = try Data(contentsOf: srtURL)
         let cues = SasayakiParser.parseCues(from: srtData)
         let result = try SasayakiMatcher.match(rootURL: rootURL, cues: cues)
-        try BookStorage.save(result, inside: rootURL, as: FileNames.sasayakiMatch)
+        try SyncStorage.shared.saveSasayakiMatch(result, folder: rootURL.lastPathComponent, root: rootURL)
         return result
     }
 
@@ -156,7 +156,7 @@ final class SasayakiMatchCoordinator {
             SasayakiAligner.align(source: source, tokens: tokens)
         }.value
 
-        try BookStorage.save(result, inside: rootURL, as: FileNames.sasayakiMatch)
+        try SyncStorage.shared.saveSasayakiMatch(result, folder: rootURL.lastPathComponent, root: rootURL)
     }
 
     private static func sameRoot(_ lhs: URL, _ rhs: URL) -> Bool {

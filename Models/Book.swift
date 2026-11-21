@@ -30,14 +30,19 @@ nonisolated struct BookMetadata: Codable, Identifiable, Hashable {
     let id: UUID
     let title: String
     let author: String?
-    let epub: String?
+    var epub: String?
     let pdf: String?
     var cover: String?
     let folder: String
     var lastAccess: Date
     var renamedTitle: String?
+    var modified: Int64?
+    var characterCount: Int?
+    var shelves: [String: Timestamped<Bool>]?
     var displayTitle: String { renamedTitle ?? title }
     var format: BookFormat { pdf != nil ? .pdf : .epub }
+    /// a Google Drive book whose file hasn't been downloaded yet; PDFs never have an epub but are always local
+    var isCloudPlaceholder: Bool { epub == nil && pdf == nil }
     
     init(id: UUID = UUID(), title: String, author: String? = nil, epub: String? = nil, pdf: String? = nil, cover: String?, folder: String, lastAccess: Date) {
         self.id = id
@@ -51,14 +56,14 @@ nonisolated struct BookMetadata: Codable, Identifiable, Hashable {
     }
 }
 
-struct Bookmark: Codable {
+nonisolated struct Bookmark: Codable {
     let chapterIndex: Int
     let progress: Double
     let characterCount: Int
     var lastModified: Date?
 }
 
-struct BookInfo: Codable {
+nonisolated struct BookInfo: Codable {
     let characterCount: Int
     let chapterInfo: [String: ChapterInfo]
     let images: [String]?
@@ -87,7 +92,7 @@ struct BookInfo: Codable {
     }
 }
 
-struct BookShelf: Codable {
+nonisolated struct BookShelf: Codable, Equatable {
     let name: String
     var bookIds: [UUID]
 }

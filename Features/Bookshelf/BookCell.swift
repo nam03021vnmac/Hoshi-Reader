@@ -11,8 +11,11 @@ struct BookCell: View {
     @Environment(UserConfig.self) var userConfig
     @State private var showDeleteConfirmation = false
     @State private var markReadConfirmation = false
+    @State private var markUnreadConfirmation = false
     @State private var showRenameAlert = false
     @State private var renameText = ""
+    @State private var showNewShelfAlert = false
+    @State private var newShelfName = ""
     let book: BookMetadata
     var viewModel: BookshelfViewModel
     var currentShelf: String?
@@ -24,6 +27,11 @@ struct BookCell: View {
     
     private var isSelected: Bool {
         selectedBooks.contains(book)
+    }
+    
+    private var hasBookInfo: Bool {
+        let directory = try! BookStorage.getBooksDirectory().appendingPathComponent(book.folder)
+        return FileManager.default.fileExists(atPath: directory.appendingPathComponent(FileNames.bookinfo).path)
     }
     
     var body: some View {
@@ -40,7 +48,12 @@ struct BookCell: View {
                 onSelect()
             }
         } label: {
-            BookView(book: book, progress: viewModel.progress(for: book), isSelected: isSelecting && isSelected)
+            BookView(
+                book: book,
+                progress: viewModel.progress(for: book),
+                isSelected: isSelecting && isSelected,
+                downloadProgress: viewModel.downloadingBooks[book.id]
+            )
         }
         .buttonStyle(.plain)
         .contextMenu(isSelecting ? nil : ContextMenu {
@@ -60,13 +73,20 @@ struct BookCell: View {
                         }
                         .disabled(shelf.name == currentShelf)
                     }
+                    Divider()
+                    Button {
+                        newShelfName = ""
+                        showNewShelfAlert = true
+                    } label: {
+                        Label("New Shelf…", systemImage: "folder.badge.plus")
+                    }
                 } label: {
                     Label("Move", systemImage: "folder")
                 }
             }
             
             if userConfig.enableSync && book.format != .pdf {
-                if userConfig.syncMode == .manual {
+                if userConfig.syncProvider == .ttu && userConfig.syncMode == .manual {
                     Menu {
                         Button {
                             viewModel.syncBook(
@@ -95,7 +115,7 @@ struct BookCell: View {
                     } label: {
                         Label("Sync", systemImage: "arrow.triangle.2.circlepath")
                     }
-                } else {
+                } else if userConfig.syncProvider == .ttu {
                     Button {
                         viewModel.syncBook(
                             book: book,
@@ -109,6 +129,14 @@ struct BookCell: View {
                         Label("Sync", systemImage: "arrow.triangle.2.circlepath")
                     }
                 }
+                
+                if userConfig.syncProvider == .gdrive && book.isCloudPlaceholder {
+                    Button {
+                        viewModel.queueDownloads([book])
+                    } label: {
+                        Label("Download", systemImage: "arrow.down.circle")
+                    }
+                }
             }
             
             if userConfig.enableSasayaki && book.format != .pdf {
@@ -119,10 +147,21 @@ struct BookCell: View {
                 }
             }
             
-            Button {
-                markReadConfirmation = true
+            Menu {
+                Button {
+                    markReadConfirmation = true
+                } label: {
+                    Label("Read", systemImage: "checkmark")
+                }
+                .disabled(!hasBookInfo)
+                Button {
+                    markUnreadConfirmation = true
+                } label: {
+                    Label("Unread", systemImage: "arrow.uturn.backward")
+                }
+                .disabled(!viewModel.canMarkUnread(book: book))
             } label: {
-                Label("Mark Read", systemImage: "checkmark")
+                Label("Mark", systemImage: "checkmark")
             }
             
             Button {
@@ -152,13 +191,31 @@ struct BookCell: View {
             }
             Button("Cancel", role: .cancel) { }
         }
+        .alert("New Shelf", isPresented: $showNewShelfAlert) {
+            TextField("Shelf name", text: $newShelfName)
+            Button("Create") {
+                viewModel.moveBooksToNewShelf([book], name: newShelfName)
+            }
+            Button("Cancel", role: .cancel) { }
+        }
         .confirmationDialog(
             "Delete \"\(book.displayTitle)\"?",
             isPresented: $showDeleteConfirmation,
             titleVisibility: .visible
         ) {
-            Button("Delete", role: .destructive) {
-                viewModel.deleteBook(book)
+            if userConfig.enableSync && userConfig.syncProvider == .gdrive {
+                if book.epub != nil, SyncStorage.shared.state.books[book.folder]?.files[.epub]?.value != nil {
+                    Button("Delete Local") {
+                        viewModel.deleteLocalBook(book)
+                    }
+                }
+                Button("Delete Everywhere", role: .destructive) {
+                    viewModel.deleteBook(book)
+                }
+            } else {
+                Button("Delete", role: .destructive) {
+                    viewModel.deleteBook(book)
+                }
             }
         }
         .confirmationDialog(
@@ -169,6 +226,17 @@ struct BookCell: View {
             Button("Confirm") {
                 viewModel.markRead(book: book)
             }
+        }
+        .confirmationDialog(
+            "Mark Unread?",
+            isPresented: $markUnreadConfirmation,
+            titleVisibility: .visible
+        ) {
+            Button("Mark Unread", role: .destructive) {
+                viewModel.markUnread(book: book)
+            }
+        } message: {
+            Text("This will reset the bookmark and statistics for \"\(book.displayTitle)\".")
         }
     }
 }

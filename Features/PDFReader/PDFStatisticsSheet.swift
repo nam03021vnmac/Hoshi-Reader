@@ -15,7 +15,7 @@ struct PDFStatisticsSheet: View {
         NavigationStack {
             List {
                 Section {
-                    rows(for: viewModel.sessionStatistics)
+                    rows(charactersRead: viewModel.currentSession.charactersRead, readingSpeed: viewModel.currentSession.readingSpeed, readingTime: viewModel.currentSession.readingTime)
                 } header: {
                     HStack {
                         Text("Session")
@@ -35,13 +35,13 @@ struct PDFStatisticsSheet: View {
                 }
 
                 Section {
-                    rows(for: viewModel.todaysStatistics)
+                    rows(charactersRead: viewModel.todaysTotal.charactersRead, readingSpeed: viewModel.todaysTotal.readingSpeed, readingTime: viewModel.todaysTotal.readingTime)
                 } header: {
                     Text("Today")
                 }
 
                 Section {
-                    rows(for: viewModel.allTimeStatistics)
+                    rows(charactersRead: viewModel.allTimeTotal.charactersRead, readingSpeed: viewModel.allTimeTotal.readingSpeed, readingTime: viewModel.allTimeTotal.readingTime)
                 } header: {
                     Text("All Time")
                 }
@@ -62,21 +62,21 @@ struct PDFStatisticsSheet: View {
     }
 
     @ViewBuilder
-    private func rows(for statistics: Statistics) -> some View {
+    private func rows(charactersRead: Int, readingSpeed: Int, readingTime: Double) -> some View {
         HStack {
             Text("Characters Read:")
             Spacer()
-            Text("**\(statistics.charactersRead)**")
+            Text("**\(charactersRead)**")
         }
         HStack {
             Text("Reading Speed:")
             Spacer()
-            Text("**\(statistics.lastReadingSpeed) / h**")
+            Text("**\(readingSpeed) / h**")
         }
         HStack {
             Text("Reading Time:")
             Spacer()
-            Text("**\(Duration.seconds(statistics.readingTime).formatted())**")
+            Text("**\(Duration.seconds(readingTime).formatted())**")
         }
     }
 }

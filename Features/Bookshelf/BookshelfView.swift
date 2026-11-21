@@ -24,6 +24,8 @@ struct BookshelfView: View {
     @State private var isSelecting = false
     @State private var selectedBooks = Set<BookMetadata>()
     @State private var showBulkDeleteConfirmation = false
+    @State private var showNewShelfAlert = false
+    @State private var newShelfName = ""
     @State private var sasayakiBook: BookMetadata?
     @State private var didLoadGDrive = false
     @Binding var pendingImportURL: URL?
@@ -42,14 +44,16 @@ struct BookshelfView: View {
                 NavigationStack(path: $navigationPath) {
                     ScrollView {
                         let sections = viewModel.shelfSections(sortedBy: userConfig.bookshelfSortOption, showReading: userConfig.bookshelfShowReading)
-                        if viewModel.books.isEmpty && viewModel.googleDriveBooks.isEmpty {
+                        if !viewModel.isLoaded {
+                            ProgressView()
+                                .containerRelativeFrame([.horizontal, .vertical])
+                        } else if viewModel.books.isEmpty && viewModel.googleDriveBooks.isEmpty {
                             ContentUnavailableView {
                                 Label("No Books", systemImage: "books.vertical")
                             } description: {
                                 Text("Import an EPUB using the \(Image(systemName: "plus")) button to start reading.")
                             }
-                            .frame(maxWidth: .infinity)
-                            .padding(.top, 160)
+                            .containerRelativeFrame([.horizontal, .vertical])
                         } else {
                             VStack {
                                 ForEach(sections) { section in
@@ -76,7 +80,7 @@ struct BookshelfView: View {
                     }
                     .navigationTitle("Books")
                     .scrollIndicators(.hidden)
-                    .applyIf(userConfig.enableSync && GoogleDriveAuth.shared.isAuthenticated) { view in
+                    .applyIf(userConfig.enableSync && GoogleDriveAuth.shared.isAuthenticated(for: userConfig.syncProvider)) { view in
                         view.refreshable {
                             await viewModel.loadGoogleDriveBooks()
                         }
@@ -84,10 +88,13 @@ struct BookshelfView: View {
                     .toolbar {
                         toolbarContent
                     }
+                    .onReceive(NotificationCenter.default.publisher(for: SyncStorage.booksChangedNotification)) { _ in
+                        viewModel.scheduleReload()
+                    }
                     .onAppear {
                         viewModel.loadBooks()
                         Task {
-                            if userConfig.enableSync && GoogleDriveAuth.shared.isAuthenticated && !didLoadGDrive {
+                            if userConfig.enableSync && GoogleDriveAuth.shared.isAuthenticated(for: userConfig.syncProvider) && !didLoadGDrive {
                                 await viewModel.loadGoogleDriveBooks(suppressOfflineErrors: true)
                                 didLoadGDrive = true
                             }
@@ -113,6 +120,14 @@ struct BookshelfView: View {
                     ) {
                         Button("Delete", role: .destructive) {
                             viewModel.deleteBooks(selectedBooks)
+                            clearSelection()
+                        }
+                        Button("Cancel", role: .cancel) { }
+                    }
+                    .alert("New Shelf", isPresented: $showNewShelfAlert) {
+                        TextField("Shelf name", text: $newShelfName)
+                        Button("Create") {
+                            viewModel.moveBooksToNewShelf(selectedBooks, name: newShelfName)
                             clearSelection()
                         }
                         Button("Cancel", role: .cancel) { }
@@ -225,10 +240,13 @@ struct BookshelfView: View {
                         viewModel.errorMessage = error.localizedDescription
                         viewModel.shouldShowError = true
                     }
+                    viewModel.clearInbox()
                 } else {
-                    viewModel.importBook(result: .success(url))
+                    Task {
+                        await viewModel.importBook(result: .success(url))
+                        viewModel.clearInbox()
+                    }
                 }
-                viewModel.clearInbox()
                 pendingImportURL = nil
             }
         }
@@ -294,6 +312,13 @@ struct BookshelfView: View {
                         } label: {
                             Label(shelf.name, systemImage: "folder")
                         }
+                    }
+                    Divider()
+                    Button {
+                        newShelfName = ""
+                        showNewShelfAlert = true
+                    } label: {
+                        Label("New Shelf…", systemImage: "folder.badge.plus")
                     }
                 } label: {
                     Image(systemName: "folder")

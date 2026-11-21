@@ -46,7 +46,6 @@ struct DictionarySearchView: View {
     """
     
     @Environment(UserConfig.self) private var userConfig
-    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @State private var query: String = ""
     @State private var lastQuery: String = ""
     @State private var content: String = ""
@@ -66,17 +65,10 @@ struct DictionarySearchView: View {
     @State private var scrollViewInitialContentOffset: CGFloat! = nil
     @State private var scrollViewContentOffset: CGFloat! = nil
     @State private var topHeight: CGFloat = 0
+    @State private var bottomHeight: CGFloat = 0
     @FocusState private var searchFocused: Bool
     var initialQuery: String = ""
     var shouldFocus: Bool = false
-    
-    private var usesTopTabBarLayout: Bool {
-        Platform.isLargeDevice && horizontalSizeClass == .regular
-    }
-    
-    private var tabBarInset: CGFloat {
-        usesTopTabBarLayout ? 0 : 45
-    }
     
     var body: some View {
         GeometryReader { geometry in
@@ -97,12 +89,12 @@ struct DictionarySearchView: View {
                     },
                     onTextSelected: {
                         closePopups()
-                        return handleTextSelection($0, maxResults: userConfig.maxResults, scanLength: userConfig.scanLength, isVertical: false, isFullWidth: false)
+                        return handleTextSelection($0, maxResults: UserConfig.shared.maxResults, scanLength: UserConfig.shared.scanLength, isVertical: false, isFullWidth: false)
                     },
                     onTapOutside: closePopups,
                     onRedirect: { query in
                         closePopups()
-                        let results = LookupEngine.shared.lookup(query, maxResults: userConfig.maxResults, scanLength: userConfig.scanLength)
+                        let results = LookupEngine.shared.lookup(query, maxResults: UserConfig.shared.maxResults, scanLength: UserConfig.shared.scanLength)
                         let entries = Self.buildLookupEntries(lookupResults: results)
                         if !entries.isEmpty {
                             backCount += 1
@@ -174,7 +166,7 @@ struct DictionarySearchView: View {
                         isVertical: popup.isVertical,
                         isFullWidth: popup.isFullWidth,
                         topInset: topHeight,
-                        bottomInset: max(Platform.bottomSafeArea, 30) + tabBarInset,
+                        bottomInset: max(bottomHeight, 30),
                         coverURL: nil,
                         documentTitle: nil,
                         clearSelection: popup.clearSelection,
@@ -237,6 +229,9 @@ struct DictionarySearchView: View {
                 Color.clear
                     .onChange(of: proxy.safeAreaInsets.top, initial: true) { _, inset in
                         topHeight = inset
+                    }
+                    .onChange(of: proxy.safeAreaInsets.bottom, initial: true) { _, inset in
+                        bottomHeight = inset
                     }
             }
         }
@@ -325,13 +320,6 @@ struct DictionarySearchView: View {
         }
         
         let results = LookupEngine.shared.lookup(trimmed, maxResults: userConfig.maxResults, scanLength: userConfig.scanLength)
-        if results.isEmpty {
-            content = ""
-            lookupEntries = []
-            dictionaryStyles = [:]
-            return
-        }
-        
         let styles = LookupEngine.shared.getStyles()
         constructHtml(results: results, styles: styles)
     }

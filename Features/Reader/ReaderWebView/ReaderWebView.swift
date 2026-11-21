@@ -31,7 +31,7 @@ struct HighlightData {
 }
 
 enum WebViewCommand {
-    case loadChapter(url: URL, progress: Double, fragment: String?, sasayakiCues: String? = nil, highlights: String? = nil)
+    case loadSpine(url: URL, progress: Double, fragment: String?, sasayakiCues: String? = nil, highlights: String? = nil)
     case restoreProgress(Double)
     case jumpToFragment(String)
     case clearSelection
@@ -43,12 +43,13 @@ enum WebViewCommand {
     case scrollToSasayakiImage(index: Int, completion: ((Bool) -> Void)? = nil)
     case removeHighlight(String)
     case showSearchHighlight(offset: Int, length: Int)
+    case paginate(NavigationDirection)
 }
 
 @Observable
 @MainActor
 class WebViewBridge {
-    private(set) var chapterURL: URL?
+    private(set) var spineURL: URL?
     private(set) var progress: Double = 0
     private(set) var sasayakiCues: String?
     private(set) var highlights: String?
@@ -59,7 +60,7 @@ class WebViewBridge {
     }
     
     func updateState(url: URL, progress: Double, sasayakiCues: String? = nil, highlights: String? = nil) {
-        self.chapterURL = url
+        self.spineURL = url
         self.progress = progress
         self.sasayakiCues = sasayakiCues
         self.highlights = highlights
@@ -106,14 +107,22 @@ extension HoshiWKWebView {
 /// The paginated reader. The platform glue (UIViewRepresentable / NSViewRepresentable, input
 /// handling and the highlight menu) lives in ReaderWebView+iOS.swift and ReaderWebView+macOS.swift.
 struct ReaderWebView {
+    @Environment(\.readerViewController) var readerViewController
     let userConfig: UserConfig
+    let rootURL: URL
+    let layout: WebViewState
+    let spineURLs: [URL]
+    var onPagesChanged: ([[Int]]) -> Void
+    var onPageChanged: (URL, Int) -> Void
     let viewSize: CGSize
+    var topInset: CGFloat = 0
+    var bottomInset: CGFloat = 0
     let bridge: WebViewBridge
     let textColor: String?
     let sasayakiTextColor: Color
     let sasayakiBackgroundColor: Color
-    var onNextChapter: () -> Bool
-    var onPreviousChapter: () -> Bool
+    var onNextSpine: () -> Bool
+    var onPreviousSpine: () -> Bool
     var onSaveBookmark: (Double) -> Void
     var onInternalLink: (URL) -> Bool
     var onInternalJump: (Double) -> Void
@@ -125,6 +134,7 @@ struct ReaderWebView {
     var onHighlightCreated: (HighlightColor, HighlightData) -> Void
     var onHighlightUpdated: (HighlightColor, UUID) -> Void
     var onImageTapped: (URL) -> Void
+    var onPageCuesChanged: ([String], Bool?) -> Void
     var doubleTapSeekEnabled: Bool = false
     var canSeekText: (Int) -> Bool = { _ in false }
     var onDoubleTapText: (Int) -> Bool = { _ in false }
@@ -140,6 +150,7 @@ struct ReaderWebView {
         config.userContentController.add(coordinator, name: "restoreCompleted")
         config.userContentController.add(coordinator, name: "selectionState")
         config.userContentController.add(coordinator, name: "imageTapped")
+        config.userContentController.add(coordinator, name: "pageChanged")
         return config
     }
 
@@ -155,6 +166,10 @@ struct ReaderWebView {
         }
 
         coordinator.webView = webView
+        Task { @MainActor [weak coordinator] in
+            guard let coordinator else { return }
+            coordinator.parent.onPagesChanged(coordinator.pageStarts)
+        }
 
         webView.alpha = 0
 
@@ -163,13 +178,14 @@ struct ReaderWebView {
 
     func updateWebView(_ webView: WKWebView, coordinator: Coordinator) {
         coordinator.parent = self
+        coordinator.measurePages()
 
         if !bridge.pendingCommands.isEmpty {
             let commands = bridge.pendingCommands
             bridge.pendingCommands.removeAll()
             for command in commands {
                 switch command {
-                case .loadChapter(let url, let progress, let fragment, let sasayakiCues, let highlights):
+                case .loadSpine(let url, let progress, let fragment, let sasayakiCues, let highlights):
                     coordinator.currentURL = url
                     coordinator.pendingProgress = progress
                     coordinator.pendingFragment = fragment
@@ -208,6 +224,7 @@ struct ReaderWebView {
                         if let progress = result as? Double {
                             onPageTurn()
                             onSaveBookmark(progress)
+                            coordinator.updatePageCues(play: nil)
                         }
                     }
                 case .clearSasayakiCue:
@@ -227,12 +244,14 @@ struct ReaderWebView {
                     webView.evaluateJavaScript("window.hoshiHighlights.removeHighlight(\(literal))") { _, _ in }
                 case .showSearchHighlight(let offset, let length):
                     webView.evaluateJavaScript("window.hoshiHighlights.showSearchHighlight(\(offset), \(length))") { _, _ in }
+                case .paginate(let direction):
+                    coordinator.navigate(direction)
                 }
             }
             return
         }
         
-        if coordinator.currentURL == nil, let url = bridge.chapterURL {
+        if coordinator.currentURL == nil, let url = bridge.spineURL {
             coordinator.currentURL = url
             coordinator.pendingProgress = bridge.progress
             coordinator.pendingFragment = nil
@@ -249,6 +268,8 @@ struct ReaderWebView {
         webView.configuration.userContentController.removeScriptMessageHandler(forName: "restoreCompleted")
         webView.configuration.userContentController.removeScriptMessageHandler(forName: "selectionState")
         webView.configuration.userContentController.removeScriptMessageHandler(forName: "imageTapped")
+        webView.configuration.userContentController.removeScriptMessageHandler(forName: "pageChanged")
+        coordinator.stopMeasuringPages()
     }
     
     class Coordinator: NSObject, WKNavigationDelegate, WKScriptMessageHandler {
@@ -261,12 +282,77 @@ struct ReaderWebView {
         var pendingHighlights: String?
         let doubleTapTracker = ReaderDoubleTapTracker()
         var shouldSyncProgressAfterRestore = false
+        var pendingPagePlayback: Bool?
+        private var pagesWebView: WKWebView?
+        private(set) var pageStarts: [[Int]] = []
+        
+        private struct PageCache: Codable {
+            let layout: WebViewState
+            let pageStarts: [[Int]]
+        }
         
         init(_ parent: ReaderWebView) {
             self.parent = parent
+            if let cache = BookStorage.load(PageCache.self, from: parent.rootURL.appendingPathComponent(FileNames.pages)),
+               cache.layout == parent.layout {
+                pageStarts = cache.pageStarts
+            }
+        }
+        
+        func measurePages() {
+            guard parent.userConfig.readerProgressCount == .pages else {
+                stopMeasuringPages()
+                return
+            }
+            let spineIndex = pageStarts.count
+            guard pagesWebView == nil, spineIndex < parent.spineURLs.count,
+                  let webView, let appDirectory = try? BookStorage.getAppDirectory() else { return }
+            let config = WKWebViewConfiguration()
+            config.defaultWebpagePreferences.preferredContentMode = .mobile
+            config.userContentController.add(self, name: "spineMeasured")
+            let pagesWebView = WKWebView(frame: CGRect(origin: .zero, size: parent.viewSize), configuration: config)
+            pagesWebView.alpha = 0
+            pagesWebView.navigationDelegate = self
+            #if os(iOS)
+            pagesWebView.accessibilityElementsHidden = true
+            pagesWebView.scrollView.contentInsetAdjustmentBehavior = .never
+            webView.insertSubview(pagesWebView, at: 0)
+            #else
+            pagesWebView.setAccessibilityElement(false)
+            webView.addSubview(pagesWebView, positioned: .below, relativeTo: nil)
+            #endif
+            self.pagesWebView = pagesWebView
+            pagesWebView.loadFileURL(parent.spineURLs[spineIndex], allowingReadAccessTo: appDirectory)
+        }
+        
+        func stopMeasuringPages() {
+            pagesWebView?.configuration.userContentController.removeScriptMessageHandler(forName: "spineMeasured")
+            pagesWebView?.removeFromSuperview()
+            pagesWebView = nil
         }
         
         func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
+            if message.name == "spineMeasured" {
+                guard message.webView === pagesWebView, let starts = message.body as? [Int],
+                      let appDirectory = try? BookStorage.getAppDirectory() else { return }
+                pageStarts.append(starts)
+                let spineIndex = pageStarts.count
+                if spineIndex == parent.spineURLs.count {
+                    let cache = PageCache(layout: parent.layout, pageStarts: pageStarts)
+                    try? BookStorage.save(cache, inside: parent.rootURL, as: FileNames.pages)
+                    parent.onPagesChanged(pageStarts)
+                    stopMeasuringPages()
+                } else {
+                    pagesWebView?.loadFileURL(parent.spineURLs[spineIndex], allowingReadAccessTo: appDirectory)
+                }
+                return
+            }
+            if message.name == "pageChanged" {
+                if let page = message.body as? Int, let url = message.webView?.url {
+                    parent.onPageChanged(url, page)
+                }
+                return
+            }
             if message.name == "selectionState" {
                 if let hasSelection = message.body as? Bool, let hv = message.webView as? HoshiWKWebView {
                     hv.hasSelection = hasSelection
@@ -287,6 +373,9 @@ struct ReaderWebView {
                 Platform.animate(withDuration: 0.25) {
                     message.webView?.alpha = 1
                 }
+                message.webView?.evaluateJavaScript(textAnimationScript) { _, _ in }
+                updatePageCues(play: pendingPagePlayback)
+                pendingPagePlayback = nil
                 parent.onRestoreCompleted()
             }
             if message.name == "textSelected" {
@@ -353,35 +442,36 @@ struct ReaderWebView {
             return js
         }
         
+        private var paragraphJs: String {
+            guard let url = Bundle.main.url(forResource: "paragraph", withExtension: "js"),
+                  let js = try? String(contentsOf: url, encoding: String.Encoding.utf8) else {
+                return ""
+            }
+            return js
+        }
+        
         func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
-            let bottomOverlap = parent.userConfig.verticalWriting ? parent.userConfig.fontSize : 0
             let pageHeight = Int(parent.viewSize.height)
             let pageWidth = Int(parent.viewSize.width)
             
             let verticalPadding = Double(parent.userConfig.verticalPadding)
             let horizontalPadding = Double(parent.userConfig.horizontalPadding)
+            let topInset = Double(parent.topInset)
+            let bottomInset = Double(parent.bottomInset)
             
             let writingMode = parent.userConfig.verticalWriting ? "vertical-rl" : "horizontal-tb"
-            let columnGapUnit = parent.userConfig.verticalWriting ? "vh" : "vw"
-            let columnGapValue = parent.userConfig.verticalWriting
-            ? verticalPadding
-            : horizontalPadding
             
-            let columnGap = parent.userConfig.verticalWriting
-            ? "calc(\(columnGapValue)\(columnGapUnit) + \(bottomOverlap)px)"
-            : "\(columnGapValue)\(columnGapUnit)"
-            let columnWidth = parent.userConfig.verticalWriting
-            ? "var(--page-height, 100vh)"
-            : "var(--page-width, 100vw)"
+            let gap = "\(horizontalPadding)vw"
+            let columnWidth = "calc(var(--page-width, 100vw) - \(gap) - 1px)"
             
-            let bottomPaddingCss = parent.userConfig.verticalWriting && bottomOverlap > 0
-            ? "padding-bottom: calc(\(verticalPadding / 2)vh + \(bottomOverlap)px) !important;"
-            : ""
+            let sidePadding = "calc(\(gap) / 2)"
+            let topPadding = "calc(\(verticalPadding / 2)vh + \(topInset)px)"
+            let bottomPadding = "calc(\(verticalPadding / 2)vh + \(bottomInset)px)"
             
-            let imgWidth = "calc(\(100 - horizontalPadding)vw - 1px)"
-            let imgHeight = parent.userConfig.verticalWriting
-            ? "calc(\(100 - verticalPadding)vh - \(Double(bottomOverlap) * (100 - verticalPadding) / 100)px)"
-            : "\(100 - verticalPadding)vh"
+            let imgHeight = "calc(\(100 - verticalPadding)vh - \(topInset + bottomInset)px)"
+            let contentSize = parent.userConfig.verticalWriting
+            ? "--hoshi-content-width: calc(var(--page-width, 100vw) - \(gap));"
+            : "--hoshi-content-height: \(imgHeight);"
             
             let textColorCss = """
             @media (prefers-color-scheme: light) { :root { --hoshi-text-color: #000; } }
@@ -410,6 +500,27 @@ struct ReaderWebView {
                 p {
                     break-inside: avoid !important;
                     -webkit-column-break-inside: avoid !important;
+                }
+                """
+            }
+            
+            var paragraphModeCss = ""
+            if parent.userConfig.paragraphMode {
+                paragraphModeCss = """
+                body {
+                    column-fill: auto !important;
+                    font-kerning: none !important;
+                }
+                p.hoshi-paragraph {
+                    margin-block-start: 0 !important;
+                    break-before: column !important;
+                    -webkit-column-break-before: always !important;
+                }
+                p.hoshi-sentence {
+                    text-indent: 0 !important;
+                }
+                ::highlight(hoshi-animation) {
+                    color: transparent !important;
                 }
                 """
             }
@@ -447,6 +558,26 @@ struct ReaderWebView {
                 """
             }
             
+            let hiddenFuriganaCss = parent.userConfig.verticalWriting
+            ? """
+            ruby.furigana-hidden > rt {
+                color: transparent !important;
+                background-image: linear-gradient(rgba(150, 150, 150, 0.75), rgba(150, 150, 150, 0.75)) !important;
+                background-size: 0.14em 100% !important;
+                background-position: left center !important;
+                background-repeat: no-repeat !important;
+            }
+            """
+            : """
+            ruby.furigana-hidden > rt {
+                color: transparent !important;
+                background-image: linear-gradient(rgba(150, 150, 150, 0.75), rgba(150, 150, 150, 0.75)) !important;
+                background-size: 100% 0.14em !important;
+                background-position: center bottom !important;
+                background-repeat: no-repeat !important;
+            }
+            """
+            
             var dimmedFuriganaCss = ""
             if parent.userConfig.furiganaMode == .dimmed {
                 dimmedFuriganaCss = """
@@ -461,11 +592,14 @@ struct ReaderWebView {
             :root {
                 --hoshi-sasayaki-text-color: \(PlatformColor(parent.sasayakiTextColor).hexString);
                 --hoshi-sasayaki-background-color: \(PlatformColor(parent.sasayakiBackgroundColor).hexString);
+                \(contentSize)
             }
             html, body {
                 overflow: hidden !important;
                 height: var(--page-height, 100vh) !important;
                 width: var(--page-width, 100vw) !important;
+                max-height: none !important;
+                max-width: none !important;
                 margin: 0 !important;
                 padding: 0 !important;
                 writing-mode: \(writingMode) !important;
@@ -476,10 +610,10 @@ struct ReaderWebView {
                 -webkit-text-size-adjust: none !important;
                 \(textSpacingCss)
                 box-sizing: border-box !important;
+                -webkit-column-axis: horizontal !important;
                 column-width: \(columnWidth) !important;
-                column-gap: \(columnGap);
-                padding: \(verticalPadding / 2)vh \(horizontalPadding / 2)vw !important;
-                \(bottomPaddingCss)
+                column-gap: \(gap);
+                padding: \(topPadding) \(sidePadding) \(bottomPadding) \(sidePadding) !important;
                 \(gridCss)
             }
             body * {
@@ -487,7 +621,7 @@ struct ReaderWebView {
                 -webkit-column-count: auto !important;
             }
             img.block-img {
-                max-width: \(imgWidth) !important;
+                max-width: \(columnWidth) !important;
                 max-height: \(imgHeight) !important;
                 width: auto !important;
                 height: auto !important;
@@ -498,7 +632,7 @@ struct ReaderWebView {
                 object-fit: contain !important;
             }
             svg {
-                max-width: \(imgWidth) !important;
+                max-width: \(columnWidth) !important;
                 max-height: \(imgHeight) !important;
                 width: 100% !important;
                 height: 100% !important;
@@ -532,17 +666,12 @@ struct ReaderWebView {
             ruby > rt, ruby > rp {
                 -webkit-user-select: none;
             }
-            ruby.furigana-hidden > rt,
-            ruby.furigana-hidden > rp {
+            ruby.furigana-hidden > rp,
+            ruby.furigana-hidden > rt > * {
                 visibility: hidden !important;
             }
             \(dimmedFuriganaCss)
-            ruby.furigana-hidden {
-                text-decoration-line: underline !important;
-                text-decoration-style: dotted !important;
-                text-decoration-color: rgba(160, 160, 160, 0.8) !important;
-                text-underline-offset: 0.05em !important;
-            }
+            \(hiddenFuriganaCss)
             .hoshi-sasayaki-cue.hoshi-sasayaki-active {
                 color: var(--hoshi-sasayaki-text-color) !important;
                 background-color: var(--hoshi-sasayaki-background-color) !important;
@@ -556,31 +685,19 @@ struct ReaderWebView {
             \(HighlightColor.css)
             \(pageBreakCss)
             \(paragraphSpacingCss)
+            \(paragraphModeCss)
             \(textColorCss)
             """
             
             let spacerJs: String = {
-                if parent.userConfig.verticalWriting {
-                    guard verticalPadding > 0 || bottomOverlap > 0 else { return "" }
-                    return """
-                    var spacer = document.createElement('div');
-                    spacer.style.height = 'calc(\(verticalPadding / 2)vh + \(bottomOverlap)px)';
-                    spacer.style.width = '100%';
-                    spacer.style.display = 'block';
-                    spacer.style.breakInside = 'avoid';
-                    document.body.appendChild(spacer);
-                    """
-                } else {
-                    guard horizontalPadding > 0 else { return "" }
-                    return """
-                    var spacer = document.createElement('div');
-                    spacer.style.height = '100%';
-                    spacer.style.width = '\(horizontalPadding / 2)vw';
-                    spacer.style.display = 'block';
-                    spacer.style.breakInside = 'avoid';
-                    document.body.appendChild(spacer);
-                    """
-                }
+                guard horizontalPadding > 0 else { return "" }
+                return """
+                var spacer = document.createElement('div');
+                spacer.style.\(parent.userConfig.verticalWriting ? "width" : "height") = '100%';
+                spacer.style.display = 'block';
+                spacer.style.breakInside = 'avoid';
+                document.body.appendChild(spacer);
+                """
             }()
             
             let furiganaJs: String = {
@@ -600,33 +717,40 @@ struct ReaderWebView {
                 }
             }()
             
-            let sasayakiSetupScript: String = {
-                if let cues = pendingSasayakiCues {
-                    return """
-                    window.hoshiReader.applySasayakiCues(\(cues));
-                    """
-                }
-                return ""
-            }()
-            pendingSasayakiCues = nil
-            
-            let highlightsSetupScript: String = {
-                if let highlights = pendingHighlights {
-                    return "window.hoshiHighlights.applyHighlights(\(highlights));"
-                }
-                return ""
-            }()
-            pendingHighlights = nil
-            
-            let initialRestoreScript: String = {
-                if let fragment = pendingFragment {
-                    shouldSyncProgressAfterRestore = true
-                    return "window.hoshiReader.jumpToFragment(\(javaScriptStringLiteral(fragment)));"
-                }
-                shouldSyncProgressAfterRestore = false
-                return "window.hoshiReader.restoreProgress(\(self.pendingProgress));"
-            }()
-            pendingFragment = nil
+            let setupScript: String
+            if webView === pagesWebView {
+                setupScript = "window.webkit.messageHandlers.spineMeasured.postMessage(window.hoshiReader.calculatePageStarts());"
+            } else {
+                let sasayakiSetupScript: String = {
+                    if let cues = pendingSasayakiCues {
+                        return """
+                        window.hoshiReader.applySasayakiCues(\(cues));
+                        """
+                    }
+                    return ""
+                }()
+                pendingSasayakiCues = nil
+                
+                let highlightsSetupScript: String = {
+                    if let highlights = pendingHighlights {
+                        return "window.hoshiHighlights.applyHighlights(\(highlights));"
+                    }
+                    return ""
+                }()
+                pendingHighlights = nil
+                
+                let initialRestoreScript: String = {
+                    if let fragment = pendingFragment {
+                        shouldSyncProgressAfterRestore = true
+                        return "window.hoshiReader.jumpToFragment(\(javaScriptStringLiteral(fragment)));"
+                    }
+                    shouldSyncProgressAfterRestore = false
+                    return "window.hoshiReader.restoreProgress(\(self.pendingProgress));"
+                }()
+                pendingFragment = nil
+                
+                setupScript = [sasayakiSetupScript, highlightsSetupScript, initialRestoreScript].joined(separator: "\n")
+            }
             
             let script = """
             (function() {
@@ -651,7 +775,7 @@ struct ReaderWebView {
                 \(selectionJs)
                 \(readerJs)
                 \(highlightsJs)
-                window.hoshiReader.pageHeight = \(pageHeight);
+                \(paragraphJs)
                 window.hoshiReader.pageWidth = \(pageWidth);
                 window.hoshiReader.registerCopyText();
                 
@@ -734,11 +858,10 @@ struct ReaderWebView {
                 Promise.all(imagePromises).then(() => {
                     return window.hoshiReader.awaitFonts();
                 }).then(() => {
+                    \(parent.userConfig.paragraphMode ? "window.hoshiParagraph.layoutParagraphs(\(parent.userConfig.maxSentencesPerPage), \(parent.userConfig.splitDialogue));" : "")
                     window.hoshiReader.fragmentBlocks();
                     window.hoshiReader.buildNodeOffsets();
-                    \(sasayakiSetupScript)
-                    \(highlightsSetupScript)
-                    \(initialRestoreScript)
+                    \(setupScript)
                 });
             })();
             """
@@ -747,6 +870,10 @@ struct ReaderWebView {
         }
         
         func webViewWebContentProcessDidTerminate(_ webView: WKWebView) {
+            if webView === pagesWebView {
+                stopMeasuringPages()
+                return
+            }
             guard let currentURL, let appDirectory = try? BookStorage.getAppDirectory() else { return }
             
             pendingFragment = nil
@@ -765,6 +892,9 @@ struct ReaderWebView {
             clearSelection()
             clearSearchHighlight()
             parent.onPageTurn()
+            if pageAdvance {
+                parent.onPageCuesChanged([], false)
+            }
             
             let script = paginationScript(direction: direction)
             
@@ -773,10 +903,12 @@ struct ReaderWebView {
                 
                 if let res = result as? String, res == "scrolled" {
                     self.saveBookmark()
+                    self.updatePageCues(play: direction == .forward)
                 } else {
-                    let chapterChanged = direction == .forward ? self.parent.onNextChapter() : self.parent.onPreviousChapter()
-                    if chapterChanged {
+                    let spineChanged = direction == .forward ? self.parent.onNextSpine() : self.parent.onPreviousSpine()
+                    if spineChanged {
                         webView.alpha = 0
+                        self.pendingPagePlayback = direction == .forward
                     }
                 }
             }
@@ -786,9 +918,23 @@ struct ReaderWebView {
             let jsDirection = direction == .forward ? "forward" : "backward"
             return """
             (function() {
-                return window.hoshiReader.paginate('\(jsDirection)');
+                window.hoshiParagraph.finishTextAnimation();
+                var result = window.hoshiReader.paginate('\(jsDirection)');
+                if (result === 'scrolled') {
+                    \(direction == .forward ? textAnimationScript : "")
+                }
+                return result;
             })()
             """
+        }
+        
+        private var pageAdvance: Bool {
+            parent.userConfig.paragraphMode && parent.userConfig.sasayakiPageAdvance && parent.userConfig.enableSasayaki
+        }
+        
+        private var textAnimationScript: String {
+            guard parent.userConfig.paragraphMode && parent.userConfig.textAnimation else { return "" }
+            return "window.hoshiParagraph.animateText(\(parent.userConfig.textSpeed));"
         }
         
         func handleTap(at point: CGPoint) {
@@ -843,7 +989,14 @@ struct ReaderWebView {
             
             let maxLength = parent.maxSelectionLength
             
-            let script = "window.hoshiSelection.selectText(\(point.x), \(point.y), \(maxLength))"
+            let script = """
+            (function() {
+                if (window.hoshiParagraph.finishTextAnimation()) {
+                    return 'animation';
+                }
+                return window.hoshiSelection.selectText(\(point.x), \(point.y), \(maxLength));
+            })()
+            """
             
             webView.evaluateJavaScript(script) { result, _ in
                 if result is NSNull || result == nil {
@@ -867,6 +1020,13 @@ struct ReaderWebView {
             shouldSyncProgressAfterRestore = true
             let script = "window.hoshiReader.jumpToFragment(\(javaScriptStringLiteral(fragment)))"
             webView.evaluateJavaScript(script) { _, _ in }
+        }
+        
+        func updatePageCues(play: Bool?) {
+            guard pageAdvance, let webView else { return }
+            webView.evaluateJavaScript("window.hoshiParagraph.pageSasayakiCues()") { [weak self] result, _ in
+                self?.parent.onPageCuesChanged(result as? [String] ?? [], play)
+            }
         }
         
         private func syncLinkJumpProgress() {

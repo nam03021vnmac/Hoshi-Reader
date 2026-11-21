@@ -12,14 +12,17 @@ import SwiftUI
 /// The continuous-scroll reader. The platform glue (UIViewRepresentable / NSViewRepresentable
 /// and scroll tracking) lives in ScrollReaderWebView+iOS.swift and ScrollReaderWebView+macOS.swift.
 struct ScrollReaderWebView {
+    @Environment(\.readerViewController) var readerViewController
     let userConfig: UserConfig
     let viewportWidth: Int
+    var topInset: CGFloat = 0
+    var bottomInset: CGFloat = 0
     let bridge: WebViewBridge
     let textColor: String?
     let sasayakiTextColor: Color
     let sasayakiBackgroundColor: Color
-    var onNextChapter: () -> Bool
-    var onPreviousChapter: () -> Bool
+    var onNextSpine: () -> Bool
+    var onPreviousSpine: () -> Bool
     var onSaveBookmark: (Double) -> Void
     var onInternalLink: (URL) -> Bool
     var onInternalJump: (Double) -> Void
@@ -89,7 +92,7 @@ struct ScrollReaderWebView {
             bridge.pendingCommands.removeAll()
             for command in commands {
                 switch command {
-                case .loadChapter(let url, let progress, let fragment, let sasayakiCues, let highlights):
+                case .loadSpine(let url, let progress, let fragment, let sasayakiCues, let highlights):
                     coordinator.currentURL = url
                     coordinator.pendingProgress = progress
                     coordinator.pendingFragment = fragment
@@ -151,12 +154,14 @@ struct ScrollReaderWebView {
                     webView.evaluateJavaScript("window.hoshiHighlights.removeHighlight(\(literal))") { _, _ in }
                 case .showSearchHighlight(let offset, let length):
                     webView.evaluateJavaScript("window.hoshiHighlights.showSearchHighlight(\(offset), \(length))") { _, _ in }
+                case .paginate:
+                    break
                 }
             }
             return
         }
         
-        if coordinator.currentURL == nil, let url = bridge.chapterURL {
+        if coordinator.currentURL == nil, let url = bridge.spineURL {
             coordinator.currentURL = url
             coordinator.pendingProgress = bridge.progress
             coordinator.pendingFragment = nil
@@ -338,13 +343,17 @@ struct ScrollReaderWebView {
             
             let verticalPadding = parent.userConfig.verticalWriting ? Double(parent.userConfig.verticalPadding) : 0
             let horizontalPadding = parent.userConfig.verticalWriting ? 0 : Double(parent.userConfig.horizontalPadding)
-            let bottomOverlap = parent.userConfig.verticalWriting ? parent.userConfig.fontSize : 0
-            let bottomPaddingCss = parent.userConfig.verticalWriting && bottomOverlap > 0
-            ? "padding-bottom: calc(\(verticalPadding / 2)vh + \(bottomOverlap)px) !important;"
+            let bottomInset = Double(parent.bottomInset)
+            let bottomPaddingCss = bottomInset > 0
+            ? "padding-bottom: calc(\(verticalPadding / 2)vh + \(bottomInset)px) !important;"
+            : ""
+            let topInset = Double(parent.topInset)
+            let topPaddingCss = topInset > 0
+            ? "padding-top: calc(\(verticalPadding / 2)vh + \(topInset)px) !important;"
             : ""
             
             let imgWidth = parent.userConfig.verticalWriting ? "none" : "\(100 - horizontalPadding)vw"
-            let imgHeight = parent.userConfig.verticalWriting ? "calc(\(100 - verticalPadding)vh - \(Double(bottomOverlap) * (100 - verticalPadding) / 100)px)" : "none"
+            let imgHeight = parent.userConfig.verticalWriting ? "calc(\(100 - verticalPadding)vh - \(topInset + bottomInset)px)" : "none"
             
             var gridCss = ""
             if !parent.userConfig.justifyText {
@@ -355,6 +364,26 @@ struct ScrollReaderWebView {
                 """
             }
             
+            let hiddenFuriganaCss = parent.userConfig.verticalWriting
+            ? """
+            ruby.furigana-hidden > rt {
+                color: transparent !important;
+                background-image: linear-gradient(rgba(150, 150, 150, 0.75), rgba(150, 150, 150, 0.75)) !important;
+                background-size: 0.14em 100% !important;
+                background-position: left center !important;
+                background-repeat: no-repeat !important;
+            }
+            """
+            : """
+            ruby.furigana-hidden > rt {
+                color: transparent !important;
+                background-image: linear-gradient(rgba(150, 150, 150, 0.75), rgba(150, 150, 150, 0.75)) !important;
+                background-size: 100% 0.14em !important;
+                background-position: center bottom !important;
+                background-repeat: no-repeat !important;
+            }
+            """
+            	
             var dimmedFuriganaCss = ""
             if parent.userConfig.furiganaMode == .dimmed {
                 dimmedFuriganaCss = """
@@ -383,6 +412,7 @@ struct ScrollReaderWebView {
                 \(textSpacingCss)
                 box-sizing: border-box !important;
                 padding: \(verticalPadding / 2)vh \(horizontalPadding / 2)vw !important;
+                \(topPaddingCss)
                 \(bottomPaddingCss)
                 \(gridCss)
             }
@@ -428,17 +458,12 @@ struct ScrollReaderWebView {
             ruby > rt, ruby > rp {
                 -webkit-user-select: none;
             }
-            ruby.furigana-hidden > rt,
-            ruby.furigana-hidden > rp {
+            ruby.furigana-hidden > rp,
+            ruby.furigana-hidden > rt > * {
                 visibility: hidden !important;
             }
             \(dimmedFuriganaCss)
-            ruby.furigana-hidden {
-                text-decoration-line: underline !important;
-                text-decoration-style: dotted !important;
-                text-decoration-color: rgba(160, 160, 160, 0.8) !important;
-                text-underline-offset: 0.05em !important;
-            }
+            \(hiddenFuriganaCss)
             .hoshi-sasayaki-cue.hoshi-sasayaki-active {
                 color: var(--hoshi-sasayaki-text-color) !important;
                 background-color: var(--hoshi-sasayaki-background-color) !important;
@@ -772,7 +797,7 @@ struct ScrollReaderWebView {
         @discardableResult
         func changeChapter(_ direction: NavigationDirection) -> Bool {
             setScrollTracking(false)
-            let changed = direction == .forward ? parent.onNextChapter() : parent.onPreviousChapter()
+            let changed = direction == .forward ? parent.onNextSpine() : parent.onPreviousSpine()
             if changed {
                 webView?.alpha = 0
             } else {

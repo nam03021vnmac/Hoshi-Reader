@@ -7,8 +7,8 @@
 //
 
 import AVFoundation
+import LAME
 import MediaPlayer
-import SwiftLAME
 import SwiftUI
 
 struct CueTimeline {
@@ -29,6 +29,11 @@ struct CueTimeline {
     func prevCue(before time: Double) -> Double? {
         let index = findCue(time)
         return index > 0 ? cues[index - 1].startTime : nil
+    }
+    
+    func cue(before time: Double) -> SasayakiMatch? {
+        let index = findCue(time)
+        return index > 0 ? cues[index - 1] : nil
     }
     
     func cue(at time: Double) -> SasayakiMatch? {
@@ -81,6 +86,7 @@ class SasayakiPlayer {
         }
     }
     var stopPlaybackTime: Double?
+    var pageRange: (start: Double, end: Double)?
     var lastUpdate = -1
     
     var delay: Double = 0 {
@@ -103,6 +109,10 @@ class SasayakiPlayer {
     var autoScroll: Bool { UserDefaults.standard.object(forKey: "sasayakiAutoScroll") as? Bool ?? true }
     var imagePause: Bool { UserDefaults.standard.object(forKey: "sasayakiImagePause") as? Bool ?? true }
     var imagePauseDuration: Double { UserDefaults.standard.object(forKey: "sasayakiImagePauseDuration") as? Double ?? 3 }
+    var pageAdvance: Bool {
+        let defaults = UserDefaults.standard
+        return defaults.bool(forKey: "sasayakiPageAdvance") && defaults.bool(forKey: "paragraphMode") && !defaults.bool(forKey: "continuousMode")
+    }
     
     var currentCue: SasayakiMatch?
     var lastCue: SasayakiMatch?
@@ -160,7 +170,26 @@ class SasayakiPlayer {
         delay = playback.delay
         rate = playback.rate
         lastUpdate = Int(currentTime.rounded(.down))
-        isRestoring = false
+        
+        if let player {
+            player.defaultRate = rate
+            
+            if isPlaying {
+                player.rate = rate
+            }
+            
+            player.seek(
+                to: CMTime(seconds: currentTime, preferredTimescale: 600),
+                toleranceBefore: .zero,
+                toleranceAfter: .zero
+            ) { [weak self] _ in
+                Task { @MainActor in
+                    self?.isRestoring = false
+                }
+            }
+        } else {
+            isRestoring = false
+        }
     }
     
     func importAudio(from url: URL) throws {
@@ -346,6 +375,39 @@ class SasayakiPlayer {
         )
     }
     
+    func handlePageChanged(cueIds: [String], play: Bool?) {
+        let ids = Set(cueIds)
+        let cues = matchData?.matches.filter { ids.contains($0.id) } ?? []
+        
+        pageRange = nil
+        if play != nil {
+            stopPlaybackTime = nil
+            if isPlaying {
+                pausePlayback()
+            }
+        }
+        
+        guard let first = cues.min(by: { $0.startTime < $1.startTime }),
+              let last = cues.max(by: { $0.startTime < $1.startTime }),
+              var end = cues.map(\.endTime).max() else {
+            return
+        }
+        if let next = timeline.nextCue(after: last.startTime) {
+            end = min(end, max(next - 0.02, last.startTime))
+        }
+        
+        var start = first.startTime
+        if let prev = timeline.cue(before: first.startTime),
+           first.start > (prev.chapterIndex == first.chapterIndex ? prev.start + prev.length : 0) {
+            start = min(start, prev.endTime + 0.05)
+        }
+        pageRange = (start, end)
+        
+        if let play {
+            seek(seconds: start + delay, startPlayback: play)
+        }
+    }
+    
     func teardown() {
         cancelImagePause()
         player?.pause()
@@ -405,32 +467,49 @@ class SasayakiPlayer {
         }
         
         let range = expandCue(cue, sentence: sentence)
-        let asset = AVURLAsset(url: url)
-        let temp = FileManager.default.temporaryDirectory.appendingPathComponent("sasayaki_audio.m4a")
-        let output = FileManager.default.temporaryDirectory.appendingPathComponent("sasayaki_audio.mp3")
-        try? FileManager.default.removeItem(at: temp)
-        try? FileManager.default.removeItem(at: output)
-        guard let session = AVAssetExportSession(asset: asset, presetName: AVAssetExportPresetAppleM4A) else {
-            return nil
-        }
-        
         let start = max(0, range.start + delay)
         let end = max(start, range.end + delay)
-        session.timeRange = CMTimeRange(
-            start: CMTime(seconds: start, preferredTimescale: 600),
-            end: CMTime(seconds: end, preferredTimescale: 600)
-        )
-        try? await session.export(to: temp, as: .m4a)
-        
-        let encoder = try? SwiftLameEncoder(
-            sourceUrl: temp,
-            configuration: .init(sampleRate: .default, bitrateMode: .constant(128), quality: .nearBest),
-            destinationUrl: output
-        )
-        guard let encoder, (try? await encoder.encode()) != nil else {
+        return await Task.detached(priority: .userInitiated) {
+            Self.encodeClip(url: url, start: start, end: end)
+        }.value
+    }
+    
+    nonisolated private static func encodeClip(url: URL, start: Double, end: Double) -> Data? {
+        guard let file = try? AVAudioFile(forReading: url, commonFormat: .pcmFormatInt16, interleaved: false) else {
             return nil
         }
-        return try? Data(contentsOf: output)
+        let format = file.processingFormat
+        let first = min(AVAudioFramePosition(start * format.sampleRate), file.length)
+        let last = min(AVAudioFramePosition(end * format.sampleRate), file.length)
+        guard last > first, let buffer = AVAudioPCMBuffer(pcmFormat: format, frameCapacity: AVAudioFrameCount(last - first)) else {
+            return nil
+        }
+        file.framePosition = first
+        guard (try? file.read(into: buffer)) != nil, let data = buffer.int16ChannelData else {
+            return nil
+        }
+        
+        let frames = Int32(buffer.frameLength)
+        let left = data[0]
+        let right = data[Int(format.channelCount) - 1]
+        let mono = memcmp(left, right, Int(frames) * MemoryLayout<Int16>.size) == 0
+        let lame = lame_init()
+        defer { lame_close(lame) }
+        lame_set_in_samplerate(lame, Int32(format.sampleRate))
+        lame_set_num_channels(lame, mono ? 1 : 2)
+        lame_set_VBR(lame, vbr_mtrh)
+        lame_set_VBR_quality(lame, 0)
+        guard lame_init_params(lame) >= 0 else {
+            return nil
+        }
+        
+        let mp3 = [UInt8](unsafeUninitializedCapacity: Int(frames) * 5 / 4 + 7200) { output, count in
+            let base = output.baseAddress!
+            let encoded = Int(lame_encode_buffer(lame, left, right, frames, base, Int32(output.count)))
+            count = encoded + Int(lame_encode_flush(lame, base + encoded, Int32(output.count - encoded)))
+            lame_get_lametag_frame(lame, base, count)
+        }
+        return Data(mp3)
     }
     
     private func expandCue(_ cue: SasayakiMatch, sentence: String) -> (start: Double, end: Double) {
@@ -468,10 +547,22 @@ class SasayakiPlayer {
     }
     
     private func tick(_ seconds: Double) {
+        if isRestoring {
+            return
+        }
+        
+        let previousTime = currentTime
         currentTime = seconds
         
         if let duration = player?.currentItem?.duration.seconds, duration.isFinite, duration > 0 {
             self.duration = duration
+        }
+        
+        if pageAdvance, let pageEnd = pageRange.map({ $0.end + delay }), previousTime < pageEnd, seconds >= pageEnd {
+            if isPlaying {
+                pausePlayback()
+            }
+            return
         }
         
         if let stopTime = stopPlaybackTime, seconds >= stopTime {
@@ -496,6 +587,9 @@ class SasayakiPlayer {
         guard let player else { return }
         lastCue = nil
         cancelImagePause()
+        if let pageRange, !(pageRange.start...pageRange.end).contains(seconds - delay) {
+            self.pageRange = nil
+        }
         
         let time = CMTime(seconds: seconds, preferredTimescale: 600)
         player.seek(to: time, toleranceBefore: .zero, toleranceAfter: .zero) { [weak self] finished in
@@ -580,7 +674,7 @@ class SasayakiPlayer {
     }
     
     func restoreAudio() {
-        guard let bookmark = playback.audioBookmark else { return }
+        guard hasMatch, let bookmark = playback.audioBookmark else { return }
         var isStale = false
         guard let url = try? URL(resolvingBookmarkData: bookmark, relativeTo: nil, bookmarkDataIsStale: &isStale) else { return }
         guard url.startAccessingSecurityScopedResource() else { return }
@@ -595,7 +689,9 @@ class SasayakiPlayer {
     private func savePlayback() {
         playback.delay = delay
         playback.rate = rate
-        try? BookStorage.save(playback, inside: rootURL, as: FileNames.sasayakiPlayback)
+        if (try? BookStorage.savePlayback(&playback, root: rootURL)) == true {
+            try? SyncStorage.shared.handleBookChange(folder: rootURL.lastPathComponent)
+        }
     }
     
     private func updateCue(for time: Double) {

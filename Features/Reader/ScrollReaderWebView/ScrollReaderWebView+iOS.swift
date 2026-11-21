@@ -20,8 +20,11 @@ extension ScrollReaderWebView: UIViewRepresentable {
         webView.isOpaque = false
         webView.backgroundColor = .clear
         webView.scrollView.backgroundColor = .clear
-        if UIDevice.current.userInterfaceIdiom == .pad {
-            webView.scrollView.contentInsetAdjustmentBehavior = .never
+        webView.scrollView.contentInsetAdjustmentBehavior = .never
+        readerViewController?.setContentScrollView(webView.scrollView)
+        if #available(iOS 26.0, *) {
+            webView.scrollView.topEdgeEffect.style = .soft
+            webView.scrollView.bottomEdgeEffect.style = .soft
         }
         webView.scrollView.delegate = context.coordinator
         webView.scrollView.alwaysBounceVertical = !userConfig.verticalWriting

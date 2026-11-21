@@ -67,10 +67,10 @@ struct PDFReaderView: View {
     private var statisticsString: String {
         var result: [String] = []
         if userConfig.readerShowReadingSpeed {
-            result.append("\(viewModel.sessionStatistics.lastReadingSpeed.formatted(.number.grouping(.never))) / h")
+            result.append("\(viewModel.currentSession.readingSpeed.formatted(.number.grouping(.never))) / h")
         }
         if userConfig.readerShowReadingTime {
-            result.append("\(Duration.seconds(viewModel.sessionStatistics.readingTime).formatted(.time(pattern: .hourMinute)))")
+            result.append("\(Duration.seconds(viewModel.currentSession.readingTime).formatted(.time(pattern: .hourMinute)))")
         }
         return result.joined(separator: " ")
     }

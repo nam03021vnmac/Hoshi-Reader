@@ -40,7 +40,7 @@ struct AdvancedView: View {
                 NavigationLink {
                     SyncView()
                 } label: {
-                    Label("ッツ Sync", systemImage: "cloud")
+                    Label("Syncing", systemImage: "cloud")
                 }
                 .foregroundStyle(.primary)
                 

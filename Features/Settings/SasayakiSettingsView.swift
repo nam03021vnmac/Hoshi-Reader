@@ -54,6 +54,10 @@ struct SasayakiSettingsView: View {
                     }
                 }
                 
+                Section("Paragraph Mode") {
+                    Toggle("Advance on Page Turn", isOn: $userConfig.sasayakiPageAdvance)
+                }
+                
                 Section("Control Bar") {
                     Toggle("Show Control Bar", isOn: Bindable(userConfig).sasayakiShowControlBar)
                     if userConfig.sasayakiShowControlBar {
@@ -93,12 +97,6 @@ struct SasayakiSettingsView: View {
                 Section("Dark Theme") {
                     ColorPicker("Text Color", selection: $userConfig.sasayakiDarkTextColor)
                     ColorPicker("Background Color", selection: $userConfig.sasayakiDarkBackgroundColor)
-                }
-                
-                if userConfig.enableSync {
-                    Section("Sync") {
-                        Toggle("ッツ Sync", isOn: $userConfig.sasayakiEnableSync)
-                    }
                 }
             }
         }

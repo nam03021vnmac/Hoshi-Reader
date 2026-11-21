@@ -64,11 +64,12 @@ final class PDFReaderViewModel {
     // stats
     var isTracking = false
     var isPaused = false
-    var sessionStatistics: Statistics
-    var todaysStatistics: Statistics
-    var allTimeStatistics: Statistics
+    private(set) var currentSession = ReadingSession.starting(at: .now)
+    private var history: [String: Timestamped<ReadingSession?>] = [:]
+    private var historyDays: [Date: ReadingTotal] = [:]
+    private var historyTotal = ReadingTotal(date: .distantPast)
+    @ObservationIgnored private var sessionId = UUID().uuidString
     private let statisticsResetTime: Int
-    @ObservationIgnored private var stats: [Statistics] = []
     @ObservationIgnored private var lastTimestamp: Date = .now
     // characters of pages turned past since the last update
     @ObservationIgnored private var pendingCharacters = 0
@@ -105,11 +106,7 @@ final class PDFReaderViewModel {
     
     init(book: BookMetadata) {
         self.book = book
-        let resetTime = UserConfig.shared.statisticsResetTime
-        self.statisticsResetTime = resetTime
-        self.sessionStatistics = Self.getDefaultStatistic(title: book.title, resetTime: resetTime)
-        self.todaysStatistics = Self.getDefaultStatistic(title: book.title, resetTime: resetTime)
-        self.allTimeStatistics = Self.getDefaultStatistic(title: book.title, resetTime: resetTime)
+        self.statisticsResetTime = UserConfig.shared.statisticsResetTime
         
         guard let pdf = book.pdf,
               let root = try? BookStorage.getBooksDirectory().appendingPathComponent(book.folder),
@@ -839,6 +836,9 @@ final class PDFReaderViewModel {
     // todo: share with ReaderViewModel
     
     func startTracking() {
+        if !currentSession.hasActivity {
+            currentSession = .starting(at: .now)
+        }
         isTracking = true
         resetTrackingBaseline()
     }
@@ -849,30 +849,32 @@ final class PDFReaderViewModel {
         isTracking = false
     }
     
+    var todaysTotal: ReadingTotal {
+        let today = StatisticsDay.date(.now, resetTime: statisticsResetTime)
+        var total = historyDays[today] ?? ReadingTotal(date: today)
+        if StatisticsDay.date(Date(milliseconds: currentSession.startedAt), resetTime: statisticsResetTime) == today {
+            total.add(currentSession)
+        }
+        return total
+    }
+    
+    var allTimeTotal: ReadingTotal {
+        var total = historyTotal
+        total.add(currentSession)
+        return total
+    }
+    
     // https://github.com/ttu-ttu/ebook-reader/blob/2703b50ec52b2e4f70afcab725c0f47dd8a66bf4/apps/web/src/lib/components/book-reader/book-reading-tracker/book-reading-tracker.svelte#L72
     func updateStats() {
-        let currentDateKey = Self.formattedDate(date: .now, resetTime: statisticsResetTime)
-        if todaysStatistics.dateKey != currentDateKey {
-            if let index = stats.firstIndex(where: { $0.dateKey == todaysStatistics.dateKey }) {
-                stats[index] = todaysStatistics
-            } else {
-                stats.append(todaysStatistics)
-            }
-            todaysStatistics = stats.first(where: { $0.dateKey == currentDateKey }) ?? Self.getDefaultStatistic(title: book.title, resetTime: statisticsResetTime)
-        }
-        
         let now: Date = .now
         let timeDiff = now.timeIntervalSince(lastTimestamp)
         // never take back more than this session added, same as the EPUB reader
-        let characterDiff = max(pendingCharacters, -sessionStatistics.charactersRead)
-        let lastStatisticModified = Int(now.timeIntervalSince1970 * 1000)
+        let characterDiff = max(pendingCharacters, -currentSession.charactersRead)
         guard timeDiff > 0 else {
             return
         }
         
-        updateStatistic(to: &sessionStatistics, timeDiff: timeDiff, characterDiff: characterDiff, lastStatisticModified: lastStatisticModified)
-        updateStatistic(to: &todaysStatistics, timeDiff: timeDiff, characterDiff: characterDiff, lastStatisticModified: lastStatisticModified)
-        updateStatistic(to: &allTimeStatistics, timeDiff: timeDiff, characterDiff: characterDiff, lastStatisticModified: lastStatisticModified)
+        currentSession.track(characters: characterDiff, time: timeDiff, until: now)
         
         lastTimestamp = now
         pendingCharacters = 0
@@ -907,56 +909,29 @@ final class PDFReaderViewModel {
         saveStats()
     }
     
-    // https://github.com/ttu-ttu/ebook-reader/blob/2703b50ec52b2e4f70afcab725c0f47dd8a66bf4/apps/web/src/lib/components/book-reader/book-reading-tracker/book-reading-tracker.svelte#L722
-    private func updateStatistic(to: inout Statistics, timeDiff: Double, characterDiff: Int, lastStatisticModified: Int) {
-        to.readingTime += timeDiff
-        to.charactersRead = max(to.charactersRead + characterDiff, 0)
-        to.lastReadingSpeed = to.readingSpeed
-        to.maxReadingSpeed = max(to.maxReadingSpeed, to.lastReadingSpeed)
-        to.minReadingSpeed = to.minReadingSpeed != 0 ? min(to.minReadingSpeed, to.lastReadingSpeed) : to.lastReadingSpeed
-        if characterDiff != 0 {
-            to.altMinReadingSpeed = to.altMinReadingSpeed != 0 ? min(to.altMinReadingSpeed, to.lastReadingSpeed) : to.lastReadingSpeed
-        }
-        to.lastStatisticModified = lastStatisticModified
-    }
-    
     private func saveStats() {
-        guard let rootURL else {
-            return
+        var sessions = StatisticsStorage.load(folder: book.folder)
+        applySessions(sessions)
+        if currentSession.hasActivity && sessions[sessionId]?.value != currentSession {
+            sessions[sessionId] = Timestamped(modified: Date.now.milliseconds, value: currentSession)
+            StatisticsStorage.save(sessions, folder: book.folder)
         }
-        if let index = stats.firstIndex(where: { $0.dateKey == todaysStatistics.dateKey }) {
-            stats[index] = todaysStatistics
-        } else {
-            stats.append(todaysStatistics)
-        }
-        
-        stats = Statistics.merged(stats).filter(\.hasActivity)
-        try? BookStorage.save(stats, inside: rootURL, as: FileNames.statistics)
     }
     
     private func loadStatistics() {
-        guard let rootURL else {
-            return
+        applySessions(StatisticsStorage.load(folder: book.folder))
+    }
+    
+    private func applySessions(_ sessions: [String: Timestamped<ReadingSession?>]) {
+        // the session was deleted elsewhere (statistics editor), so start a new one
+        if let change = sessions[sessionId], change.value == nil {
+            sessionId = UUID().uuidString
+            currentSession = .starting(at: .now)
         }
-        stats = Statistics.merged(BookStorage.loadStatistics(root: rootURL) ?? [])
-        todaysStatistics = stats.first(where: { $0.dateKey == Self.formattedDate(date: .now, resetTime: statisticsResetTime) }) ?? Self.getDefaultStatistic(title: book.title, resetTime: statisticsResetTime)
-        allTimeStatistics = Self.getDefaultStatistic(title: book.title, resetTime: statisticsResetTime)
-        
-        let allTime = stats.reduce(into: ReadingDay(date: .now)) { $0.add($1) }
-        allTimeStatistics.charactersRead = allTime.charactersRead
-        allTimeStatistics.readingTime = allTime.readingTime
-        allTimeStatistics.lastReadingSpeed = allTime.readingSpeed
-    }
-    
-    private static func getDefaultStatistic(title: String, resetTime: Int = 0) -> Statistics {
-        return Statistics(title: title, dateKey: Self.formattedDate(date: .now, resetTime: resetTime), charactersRead: 0, readingTime: 0, minReadingSpeed: 0, altMinReadingSpeed: 0, lastReadingSpeed: 0, maxReadingSpeed: 0, lastStatisticModified: 0)
-    }
-    
-    private static func formattedDate(date: Date, resetTime: Int = 0) -> String {
-        let adjustedDate = date.addingTimeInterval(-Double(resetTime) * 60)
-        let formatter = ISO8601DateFormatter()
-        formatter.timeZone = TimeZone.current
-        formatter.formatOptions = [.withFullDate]
-        return formatter.string(from: adjustedDate)
+        guard history != sessions else { return }
+        history = sessions
+        let days = StatisticsDay.grouped(history.filter { $0.key != sessionId }, resetTime: statisticsResetTime)
+        historyDays = Dictionary(uniqueKeysWithValues: days.map { ($0.date, $0.total) })
+        historyTotal = historyDays.values.reduce(into: ReadingTotal(date: .distantPast)) { $0.add($1) }
     }
 }

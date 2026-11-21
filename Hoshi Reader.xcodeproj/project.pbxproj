@@ -13,7 +13,7 @@
 		48568CD32F1EC9A400F9C126 /* EPUBKit in Frameworks */ = {isa = PBXBuildFile; productRef = 48568CD22F1EC9A400F9C126 /* EPUBKit */; };
 		48BC0BDF2F5C316B00EDAC3F /* CHoshiDicts in Frameworks */ = {isa = PBXBuildFile; productRef = 48BC0BDE2F5C316B00EDAC3F /* CHoshiDicts */; };
 		48C8125F2F5F47C000127630 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 48C8125E2F5F47C000127630 /* PrivacyInfo.xcprivacy */; };
-		48F0AF182FF5750F004B75F8 /* SwiftLAME in Frameworks */ = {isa = PBXBuildFile; productRef = 48F0AF172FF5750F004B75F8 /* SwiftLAME */; };
+		48F0AF182FF5750F004B75F8 /* LAME in Frameworks */ = {isa = PBXBuildFile; productRef = 48F0AF172FF5750F004B75F8 /* LAME */; };
 		48FE8D502F76AB88002C2C49 /* ShareExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 48FE8D462F76AB88002C2C49 /* ShareExtension.appex */; platformFilter = ios; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		90F2F2662FBCA7C000FEABB6 /* Dictionaries.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = 90F2F2642FBCA7C000FEABB6 /* Dictionaries.xcstrings */; };
 		90F2F2672FBCA7C000FEABB6 /* Localizable.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = 90F2F2652FBCA7C000FEABB6 /* Localizable.xcstrings */; };
@@ -47,11 +47,13 @@
 /* Begin PBXFileReference section */
 		48568A462F1E7F5C00F9C126 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		48568A472F1E7F5C00F9C126 /* HoshiIcon.icon */ = {isa = PBXFileReference; lastKnownFileType = folder.iconcomposer.icon; path = HoshiIcon.icon; sourceTree = "<group>"; };
+		48B13D98305C7190007D3916 /* Hoshi Reader.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = "Hoshi Reader.entitlements"; sourceTree = "<group>"; };
 		48C8125E2F5F47C000127630 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		48D95BC52F1BF4D80074AD70 /* Hoshi Reader.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Hoshi Reader.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		48FE8D462F76AB88002C2C49 /* ShareExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = ShareExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		90F2F2642FBCA7C000FEABB6 /* Dictionaries.xcstrings */ = {isa = PBXFileReference; lastKnownFileType = text.json.xcstrings; path = Dictionaries.xcstrings; sourceTree = "<group>"; };
 		90F2F2652FBCA7C000FEABB6 /* Localizable.xcstrings */ = {isa = PBXFileReference; lastKnownFileType = text.json.xcstrings; path = Localizable.xcstrings; sourceTree = "<group>"; };
+		D2A863B97BAE4578ADF2B9F4 /* Config.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Config.xcconfig; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -92,6 +94,7 @@
 				PDFTextLayer.swift,
 				Sasayaki.swift,
 				Statistics.swift,
+				Sync.swift,
 			);
 			target = 48107AB62F114021009E12D1 /* Hoshi Reader */;
 		};
@@ -177,7 +180,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				48568CD32F1EC9A400F9C126 /* EPUBKit in Frameworks */,
-				48F0AF182FF5750F004B75F8 /* SwiftLAME in Frameworks */,
+				48F0AF182FF5750F004B75F8 /* LAME in Frameworks */,
 				482B74F22F4664CB00398222 /* SwiftUIIntrospect in Frameworks */,
 				48BC0BDF2F5C316B00EDAC3F /* CHoshiDicts in Frameworks */,
 				ABFC92CD98C379AE0FE51CB2 /* onnxruntime in Frameworks */,
@@ -197,6 +200,8 @@
 		48107AAE2F114021009E12D1 = {
 			isa = PBXGroup;
 			children = (
+				D2A863B97BAE4578ADF2B9F4 /* Config.xcconfig */,
+				48B13D98305C7190007D3916 /* Hoshi Reader.entitlements */,
 				90F2F2642FBCA7C000FEABB6 /* Dictionaries.xcstrings */,
 				90F2F2652FBCA7C000FEABB6 /* Localizable.xcstrings */,
 				48568A622F1E926300F9C126 /* App */,
@@ -248,7 +253,7 @@
 				48568CD22F1EC9A400F9C126 /* EPUBKit */,
 				482B74F12F4664CB00398222 /* SwiftUIIntrospect */,
 				48BC0BDE2F5C316B00EDAC3F /* CHoshiDicts */,
-				48F0AF172FF5750F004B75F8 /* SwiftLAME */,
+				48F0AF172FF5750F004B75F8 /* LAME */,
 				C8957CAAA517123D4F2257F6 /* onnxruntime */,
 			);
 			productName = "Hoshi Reader";
@@ -309,7 +314,7 @@
 				48568CD12F1EC9A400F9C126 /* XCLocalSwiftPackageReference "Libraries/EPUBKit" */,
 				48A18AB92F465F1F00AC8514 /* XCRemoteSwiftPackageReference "SwiftUI-Introspect" */,
 				48BC0BDD2F5C316B00EDAC3F /* XCLocalSwiftPackageReference "../hoshidicts" */,
-				48F0AF152FF574F8004B75F8 /* XCRemoteSwiftPackageReference "SwiftLAME" */,
+				48F0AF152FF574F8004B75F8 /* XCRemoteSwiftPackageReference "swift-lame" */,
 				21953111D6FA01149E61C245 /* XCRemoteSwiftPackageReference "onnxruntime-swift-package-manager" */,
 			);
 			preferredProjectObjectVersion = 77;
@@ -407,7 +412,7 @@
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 8.6;
+				CURRENT_PROJECT_VERSION = 2.11;
 				DEBUG_INFORMATION_FORMAT = dwarf;
 				DEVELOPMENT_TEAM = GPLBDQ2MBT;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
@@ -429,7 +434,7 @@
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 18.6;
 				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
-				MARKETING_VERSION = 1.4.0;
+				MARKETING_VERSION = 1.5.0;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;
@@ -476,7 +481,7 @@
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 8.6;
+				CURRENT_PROJECT_VERSION = 2.11;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				DEVELOPMENT_TEAM = GPLBDQ2MBT;
 				ENABLE_NS_ASSERTIONS = NO;
@@ -492,7 +497,7 @@
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 18.6;
 				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
-				MARKETING_VERSION = 1.4.0;
+				MARKETING_VERSION = 1.5.0;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				SDKROOT = iphoneos;
@@ -506,10 +511,12 @@
 		};
 		48107AC32F114021009E12D1 /* Debug */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = D2A863B97BAE4578ADF2B9F4 /* Config.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = HoshiIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = NO;
+				CODE_SIGN_ENTITLEMENTS = "Hoshi Reader.entitlements";
 				"CODE_SIGN_ENTITLEMENTS[sdk=macosx*]" = "App/macOS/HoshiReader-macOS.entitlements";
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
@@ -560,10 +567,12 @@
 		};
 		48107AC42F114021009E12D1 /* Release */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = D2A863B97BAE4578ADF2B9F4 /* Config.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = HoshiIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = NO;
+				CODE_SIGN_ENTITLEMENTS = "Hoshi Reader.entitlements";
 				"CODE_SIGN_ENTITLEMENTS[sdk=macosx*]" = "App/macOS/HoshiReader-macOS.entitlements";
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
@@ -730,9 +739,9 @@
 				minimumVersion = 26.0.0;
 			};
 		};
-		48F0AF152FF574F8004B75F8 /* XCRemoteSwiftPackageReference "SwiftLAME" */ = {
+		48F0AF152FF574F8004B75F8 /* XCRemoteSwiftPackageReference "swift-lame" */ = {
 			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://github.com/hidden-spectrum/SwiftLAME.git";
+			repositoryURL = "https://github.com/Manhhao/swift-lame.git";
 			requirement = {
 				branch = main;
 				kind = branch;
@@ -754,10 +763,10 @@
 			isa = XCSwiftPackageProductDependency;
 			productName = CHoshiDicts;
 		};
-		48F0AF172FF5750F004B75F8 /* SwiftLAME */ = {
+		48F0AF172FF5750F004B75F8 /* LAME */ = {
 			isa = XCSwiftPackageProductDependency;
-			package = 48F0AF152FF574F8004B75F8 /* XCRemoteSwiftPackageReference "SwiftLAME" */;
-			productName = SwiftLAME;
+			package = 48F0AF152FF574F8004B75F8 /* XCRemoteSwiftPackageReference "swift-lame" */;
+			productName = LAME;
 		};
 		C8957CAAA517123D4F2257F6 /* onnxruntime */ = {
 			isa = XCSwiftPackageProductDependency;

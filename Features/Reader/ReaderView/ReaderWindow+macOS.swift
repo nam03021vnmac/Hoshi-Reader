@@ -16,7 +16,8 @@ final class ReaderWindow: NSObject, NSWindowDelegate {
     private var window: NSWindow?
     private var onDismiss: (() -> Void)?
 
-    func present<Content: View>(@ViewBuilder content: () -> Content, onDismiss: @escaping () -> Void) {
+    @discardableResult
+    func present<Content: View>(@ViewBuilder content: () -> Content, onDismiss: @escaping () -> Void) -> Bool {
         let dismiss: () -> Void = { [weak self] in self?.dismiss() }
         let host = NSHostingController(rootView: AnyView(content().environment(\.dismissReader, dismiss)))
         // the window keeps the frame set up below; the reader lays out once at that size
@@ -29,7 +30,7 @@ final class ReaderWindow: NSObject, NSWindowDelegate {
             host.view.frame = NSRect(origin: .zero, size: window.contentRect(forFrameRect: window.frame).size)
             window.contentViewController = host
             window.makeKeyAndOrderFront(nil)
-            return
+            return true
         }
 
         let visibleHeight = NSScreen.main?.visibleFrame.height ?? 1000
@@ -54,6 +55,7 @@ final class ReaderWindow: NSObject, NSWindowDelegate {
         self.window = window
         self.onDismiss = onDismiss
         window.makeKeyAndOrderFront(nil)
+        return true
     }
 
     func dismiss(onDismiss: (() -> Void)? = nil) {

@@ -62,7 +62,7 @@ struct AppearanceView: View {
                         Text("Light").tag(Themes.light)
                         Text("Dark").tag(Themes.dark)
                     }
-                    ColorPicker("Background Color", selection: $userConfig.customBackgroundColor)
+                    ColorPicker("Background Color", selection: $userConfig.customBackgroundColor, supportsOpacity: false)
                     ColorPicker("Text Color", selection: $userConfig.customTextColor)
                     ColorPicker("Info Color", selection: $userConfig.customInfoColor)
                 }
@@ -193,6 +193,44 @@ struct AppearanceView: View {
                             set: { userConfig.chapterSwipeDistance = Int($0) }
                         ), in: 10...60, step: 5)
                     }
+                } else {
+                    Toggle("Paragraph Mode", isOn: $userConfig.paragraphMode)
+                    
+                    if userConfig.paragraphMode {
+                        VStack {
+                            HStack {
+                                Text("Max Sentences per Page")
+                                Spacer()
+                                Text(userConfig.maxSentencesPerPage == 0 ? "Off" : "\(userConfig.maxSentencesPerPage)")
+                                    .fontWeight(.semibold)
+                            }
+                            SteppedSlider(value: .init(
+                                get: { Double(userConfig.maxSentencesPerPage) },
+                                set: { userConfig.maxSentencesPerPage = Int($0) }
+                            ), in: 0...10, step: 1)
+                        }
+                        
+                        if userConfig.maxSentencesPerPage > 0 {
+                            Toggle("Split up Dialogue", isOn: $userConfig.splitDialogue)
+                        }
+                        
+                        Toggle("Animation", isOn: $userConfig.textAnimation)
+                        
+                        if userConfig.textAnimation {
+                            VStack {
+                                HStack {
+                                    Text("Text Speed")
+                                    Spacer()
+                                    Text("\(userConfig.textSpeed)/s")
+                                        .fontWeight(.semibold)
+                                }
+                                SteppedSlider(value: .init(
+                                    get: { Double(userConfig.textSpeed) },
+                                    set: { userConfig.textSpeed = Int($0) }
+                                ), in: 25...100, step: 5)
+                            }
+                        }
+                    }
                 }
                 
                 HStack {
@@ -256,7 +294,19 @@ struct AppearanceView: View {
                 Toggle("Show Chapter Progress", isOn: $userConfig.readerShowChapterProgress)
                 
                 if userConfig.readerShowProgress || userConfig.readerShowChapterProgress {
-                    Toggle("Show Character Count", isOn: $userConfig.readerShowCharacters)
+                    VStack {
+                        HStack {
+                            Text("Count")
+                            Spacer()
+                        }
+                        Picker("", selection: $userConfig.readerProgressCount) {
+                            Text("Off").tag(ProgressCount.off)
+                            Text("Characters").tag(ProgressCount.characters)
+                            Text("Pages").tag(ProgressCount.pages)
+                        }
+                        .pickerStyle(.segmented)
+                        .labelsHidden()
+                    }
                     Toggle("Show Percentage", isOn: $userConfig.readerShowPercentage)
                     
                     VStack {

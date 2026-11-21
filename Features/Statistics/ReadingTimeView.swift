@@ -32,7 +32,7 @@ struct ReadingTimeView: View {
                     .foregroundStyle(.secondary)
                 
                 HStack(alignment: .firstTextBaseline) {
-                    Text((viewModel.selectedDay?.readingTime ?? viewModel.averageReadingTime(for: viewModel.referenceDate) ?? 0).formattedDuration)
+                    Text((viewModel.selectedTotal?.readingTime ?? viewModel.averageReadingTime(for: viewModel.referenceDate) ?? 0).formattedDuration)
                         .font(.system(size: 38, weight: .regular))
                         .monospacedDigit()
                     
@@ -105,22 +105,22 @@ struct ReadingTimeView: View {
     }
     
     private var headline: Text {
-        guard let selectedDay = viewModel.selectedDay else {
+        guard let selectedTotal = viewModel.selectedTotal else {
             return Text("\(viewModel.title(for: viewModel.referenceDate)) Average")
         }
         
         switch viewModel.bucketUnit {
         case .month:
-            return Text(verbatim: selectedDay.date.formatted(.dateTime.month(.wide).year()))
+            return Text(verbatim: selectedTotal.date.formatted(.dateTime.month(.wide).year()))
         default:
-            return Text(verbatim: selectedDay.date.formatted(.dateTime.weekday(.abbreviated).month(.abbreviated).day()))
+            return Text(verbatim: selectedTotal.date.formatted(.dateTime.weekday(.abbreviated).month(.abbreviated).day()))
         }
     }
     
     private func chart(for referenceDate: Date) -> some View {
         let buckets = viewModel.buckets(for: referenceDate)
         let average = (viewModel.averageReadingTime(for: referenceDate) ?? 0) / 3600
-        let maximum = max(5, ceil((buckets.map(\.readingTime).max() ?? 0) / 3600))
+        let maximum = max(2, ceil((buckets.map(\.readingTime).max() ?? 0) / 3600))
         let selected = buckets.first { $0.date == viewModel.selectedDate }?.date
         let end = Calendar.current.date(byAdding: viewModel.bucketUnit, value: 1, to: buckets.last!.date)!
         

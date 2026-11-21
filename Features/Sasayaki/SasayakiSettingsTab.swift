@@ -56,7 +56,11 @@ struct SasayakiSettingsTab: View {
                     }
                 }
             }
-            
+
+            Section("Paragraph Mode") {
+                Toggle("Advance on Page Turn", isOn: $userConfig.sasayakiPageAdvance)
+            }
+
             Section("Playback") {
                 Toggle("Auto-Scroll", isOn: $userConfig.sasayakiAutoScroll)
                 Toggle("Auto-Pause on Lookup", isOn: $userConfig.sasayakiAutoPause)

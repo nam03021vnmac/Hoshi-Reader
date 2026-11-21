@@ -10,6 +10,7 @@ import SwiftUI
 
 struct StatisticsView: View {
     @Environment(UserConfig.self) private var userConfig
+    @Environment(\.scenePhase) private var scenePhase
     @State private var viewModel = StatisticsViewModel()
     
     var body: some View {
@@ -32,7 +33,7 @@ struct StatisticsView: View {
                         Text("\(viewModel.summary.readingSpeed.formatted(.number)) / h")
                             .monospacedDigit()
                     }
-                    if viewModel.selectedDay == nil {
+                    if viewModel.selectedTotal == nil {
                         LabeledContent("Total Time") {
                             Text(viewModel.summary.readingTime.formattedDuration)
                                 .monospacedDigit()
@@ -84,8 +85,18 @@ struct StatisticsView: View {
                 viewModel.resetTime = userConfig.statisticsResetTime
                 viewModel.load()
             }
+            .onReceive(NotificationCenter.default.publisher(for: SyncStorage.booksChangedNotification)) { _ in
+                viewModel.scheduleLoad()
+            }
             .onChange(of: userConfig.statisticsResetTime) { _, resetTime in
                 viewModel.resetTime = resetTime
+                viewModel.load()
+            }
+            .onChange(of: scenePhase) { _, phase in
+                guard phase == .active else {
+                    return
+                }
+                viewModel.load()
             }
         }
     }

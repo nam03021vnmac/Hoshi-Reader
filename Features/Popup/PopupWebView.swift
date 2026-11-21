@@ -280,7 +280,7 @@ struct PopupWebView {
     }
 
     static func dismantleWebView(_ webView: WKWebView, coordinator: Coordinator) {
-        coordinator.removeWordAddedObserver()
+        coordinator.removeObservers()
         Task {
             await WordAudioPlayer.shared.stop(id: coordinator.id)
         }
@@ -308,13 +308,13 @@ struct PopupWebView {
         var entries: [[String: Any]] = []
         weak var webView: WKWebView?
         lazy var buttons = PopupButtons(coordinator: self)
-        private var wordAddedObserver: NSObjectProtocol?
+        private var observers: [NSObjectProtocol] = []
         let id = UUID()
 
         init(parent: PopupWebView) {
             self.parent = parent
             super.init()
-            wordAddedObserver = NotificationCenter.default.addObserver(
+            observers.append(NotificationCenter.default.addObserver(
                 forName: AnkiManager.wordAddedNotification,
                 object: nil,
                 queue: .main
@@ -322,14 +322,21 @@ struct PopupWebView {
                 MainActor.assumeIsolated {
                     self?.webView?.evaluateJavaScript("recheckDuplicates()")
                 }
-            }
+            })
+            observers.append(NotificationCenter.default.addObserver(
+                forName: AnkiManager.ankiConnectNotification,
+                object: nil,
+                queue: .main
+            ) { [weak self] _ in
+                MainActor.assumeIsolated {
+                    self?.webView?.evaluateJavaScript("window.isAnkiConnectReachable = \(AnkiManager.shared.isAnkiConnectReachable); recheckDuplicates()")
+                }
+            })
         }
 
-        func removeWordAddedObserver() {
-            if let wordAddedObserver {
-                NotificationCenter.default.removeObserver(wordAddedObserver)
-                self.wordAddedObserver = nil
-            }
+        func removeObservers() {
+            observers.forEach(NotificationCenter.default.removeObserver)
+            observers.removeAll()
         }
 
         /// The SF Symbol drawn on a slot's button, and the point size to draw it at.
@@ -384,11 +391,13 @@ struct PopupWebView {
                 """
                 window.dictionaryStyles = dictionaryStyles;
                 window.entryCount = entryCount;
+                window.isAnkiConnectReachable = isAnkiConnectReachable;
                 window.renderPopup();
                 """,
                 arguments: [
                     "dictionaryStyles": parent.dictionaryStyles,
                     "entryCount": entries.count,
+                    "isAnkiConnectReachable": AnkiManager.shared.isAnkiConnectReachable,
                 ],
                 in: nil,
                 in: .page,

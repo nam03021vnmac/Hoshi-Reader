@@ -112,6 +112,12 @@ nonisolated enum PDFOCRMode: String, CaseIterable, Codable, Sendable {
     case off = "Off"
 }
 
+enum ProgressCount: String, CaseIterable, Codable {
+    case off = "Off"
+    case characters = "Characters"
+    case pages = "Pages"
+}
+
 @Observable
 class UserConfig {
     static let shared = UserConfig()
@@ -200,6 +206,12 @@ class UserConfig {
         didSet { UserDefaults.standard.set(enableSync, forKey: "enableSync") }
     }
     
+    var syncProvider: SyncProvider {
+        didSet {
+            UserDefaults.standard.set(syncProvider.rawValue, forKey: "syncProvider")
+        }
+    }
+    
     var syncMode: SyncMode {
         didSet { UserDefaults.standard.set(syncMode.rawValue, forKey: "syncMode") }
     }
@@ -262,6 +274,26 @@ class UserConfig {
     
     var continuousMode: Bool {
         didSet { UserDefaults.standard.set(continuousMode, forKey: "continuousMode") }
+    }
+    
+    var paragraphMode: Bool {
+        didSet { UserDefaults.standard.set(paragraphMode, forKey: "paragraphMode") }
+    }
+    
+    var maxSentencesPerPage: Int {
+        didSet { UserDefaults.standard.set(maxSentencesPerPage, forKey: "maxSentencesPerPage") }
+    }
+    
+    var splitDialogue: Bool {
+        didSet { UserDefaults.standard.set(splitDialogue, forKey: "splitDialogue") }
+    }
+    
+    var textAnimation: Bool {
+        didSet { UserDefaults.standard.set(textAnimation, forKey: "textAnimation") }
+    }
+    
+    var textSpeed: Int {
+        didSet { UserDefaults.standard.set(textSpeed, forKey: "textSpeed") }
     }
     
     var chapterSwipeDistance: Int {
@@ -332,8 +364,8 @@ class UserConfig {
         didSet { UserDefaults.standard.set(readerShowChapterProgress, forKey: "readerShowChapterProgress") }
     }
     
-    var readerShowCharacters: Bool {
-        didSet { UserDefaults.standard.set(readerShowCharacters, forKey: "readerShowCharacters") }
+    var readerProgressCount: ProgressCount {
+        didSet { UserDefaults.standard.set(readerProgressCount.rawValue, forKey: "readerProgressCount") }
     }
     
     var readerShowPercentage: Bool {
@@ -496,6 +528,10 @@ class UserConfig {
         didSet { UserDefaults.standard.set(sasayakiImagePauseDuration, forKey: "sasayakiImagePauseDuration") }
     }
     
+    var sasayakiPageAdvance: Bool {
+        didSet { UserDefaults.standard.set(sasayakiPageAdvance, forKey: "sasayakiPageAdvance") }
+    }
+    
     var sasayakiShowControlBar: Bool {
         didSet { UserDefaults.standard.set(sasayakiShowControlBar, forKey: "sasayakiShowControlBar") }
     }
@@ -563,10 +599,17 @@ class UserConfig {
         self.compactPitchAccents = defaults.object(forKey: "compactPitchAccents") as? Bool ?? true
         
         self.enableSync = defaults.object(forKey: "enableSync") as? Bool ?? false
+        let clientId = defaults.string(forKey: "googleClientId") ?? ""
+        let hasTtuLogin = !clientId.isEmpty && GoogleDriveAuth.shared.isAuthenticated
+        let syncProvider =
+        defaults.string(forKey: "syncProvider").flatMap(SyncProvider.init(rawValue:))
+        ?? (hasTtuLogin ? .ttu : .gdrive)
+        self.syncProvider = syncProvider
+        defaults.set(syncProvider.rawValue, forKey: "syncProvider")
         self.syncMode = defaults.string(forKey: "syncMode")
             .flatMap(SyncMode.init) ?? .auto
         self.enableAutoSync = defaults.object(forKey: "enableAutoSync") as? Bool ?? false
-        self.googleClientId = defaults.object(forKey: "googleClientId") as? String ?? ""
+        self.googleClientId = clientId
         self.syncUploadBooks = defaults.object(forKey: "syncUploadBooks") as? Bool ?? true
         
         self.theme = defaults.string(forKey: "theme")
@@ -592,6 +635,11 @@ class UserConfig {
         self.pdfPrefetchPages = defaults.object(forKey: "pdfPrefetchPages") as? Int ?? 2
         self.pdfOCRMode = defaults.string(forKey: "pdfOCRMode")
             .flatMap(PDFOCRMode.init) ?? .auto
+        self.paragraphMode = defaults.object(forKey: "paragraphMode") as? Bool ?? false
+        self.maxSentencesPerPage = defaults.object(forKey: "maxSentencesPerPage") as? Int ?? 0
+        self.splitDialogue = defaults.object(forKey: "splitDialogue") as? Bool ?? false
+        self.textAnimation = defaults.object(forKey: "textAnimation") as? Bool ?? false
+        self.textSpeed = defaults.object(forKey: "textSpeed") as? Int ?? 35
         self.chapterSwipeDistance = defaults.object(forKey: "chapterSwipeDistance") as? Int ?? 20
         self.horizontalPadding = defaults.object(forKey: "layoutHorizontalPadding") as? Int ?? 5
         self.verticalPadding = defaults.object(forKey: "layoutVerticalPadding") as? Int ?? 0
@@ -606,7 +654,8 @@ class UserConfig {
         self.readerShowTitle = defaults.object(forKey: "readerShowTitle") as? Bool ?? true
         self.readerShowProgress = defaults.object(forKey: "readerShowProgress") as? Bool ?? true
         self.readerShowChapterProgress = defaults.object(forKey: "readerShowChapterProgress") as? Bool ?? false
-        self.readerShowCharacters = defaults.object(forKey: "readerShowCharacters") as? Bool ?? true
+        self.readerProgressCount = defaults.string(forKey: "readerProgressCount")
+            .flatMap(ProgressCount.init) ?? (defaults.object(forKey: "readerShowCharacters") as? Bool ?? true ? .characters : .off)
         self.readerShowPercentage = defaults.object(forKey: "readerShowPercentage") as? Bool ?? true
         self.readerAlwaysShowProgress = defaults.object(forKey: "readerAlwaysShowProgress") as? Bool ?? false
         self.readerShowProgressTop = defaults.object(forKey: "readerShowProgressTop") as? Bool ?? true
@@ -660,6 +709,7 @@ class UserConfig {
         self.sasayakiDoubleTapSeek = defaults.object(forKey: "sasayakiDoubleTapSeek") as? Bool ?? true
         self.sasayakiImagePause = defaults.object(forKey: "sasayakiImagePause") as? Bool ?? true
         self.sasayakiImagePauseDuration = defaults.object(forKey: "sasayakiImagePauseDuration") as? Double ?? 3
+        self.sasayakiPageAdvance = defaults.object(forKey: "sasayakiPageAdvance") as? Bool ?? false
         self.sasayakiShowControlBar = defaults.object(forKey: "sasayakiShowControlBar") as? Bool ?? true
         self.sasayakiAlwaysShowControlBar = defaults.object(forKey: "sasayakiAlwaysShowControlBar") as? Bool ?? false
         self.sasayakiControlBarSide = defaults.string(forKey: "sasayakiControlBarSide")

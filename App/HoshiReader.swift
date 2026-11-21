@@ -28,12 +28,11 @@ struct HoshiReaderApp: App {
     private func startup() async {
         TokenStorage.clearOldKeys()
         await Task.detached(priority: .userInitiated) {
-            BookStorage.migrateFromDocuments()
-            BookStorage.migrateBooks()
         }.value
         didFinishLaunch = true
         _ = DictionaryManager.shared
-        _ = GoogleDriveHandler.shared
+        _ = TtuDriveHandler.shared
+        _ = GoogleDriveSyncManager.shared
         WebViewPreloader.shared.warmup()
     }
     
@@ -52,6 +51,7 @@ struct HoshiReaderApp: App {
                 }
             }
             .environment(userConfig)
+            .modifier(SyncAttachAlert(active: didFinishLaunch && scenePhase == .active))
             .preferredColorScheme(userConfig.theme == .custom ? userConfig.uiTheme.colorScheme : (userConfig.theme == .sepia && userConfig.sepiaInvertInDark ? nil : userConfig.theme.colorScheme))
             .task {
                 await startup()
@@ -59,6 +59,7 @@ struct HoshiReaderApp: App {
             .onChange(of: scenePhase, initial: true) { _, phase in
                 switch phase {
                 case .active:
+                    GoogleDriveSyncManager.shared.start()
                     LocalFileServer.shared.endBackgroundTask()
                     Task { @MainActor in
                         LocalFileServer.shared.setAudioServer(enabled: userConfig.enableLocalAudio)
@@ -67,6 +68,9 @@ struct HoshiReaderApp: App {
                         DictionaryManager.shared.autoUpdateDictionaries()
                     }
                 case .background:
+                    Task {
+                        await GoogleDriveSyncManager.shared.pause()
+                    }
                     LocalFileServer.shared.startBackgroundTask()
                 default:
                     break

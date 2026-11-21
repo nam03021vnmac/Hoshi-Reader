@@ -91,7 +91,7 @@ struct PDFImporter {
             throw error
         }
         
-        StatisticsStorage.restore(folder: safeTitle)
+        try? StatisticsStorage.restore(folder: safeTitle)
     }
     
     private static func resolveTitle(attribute: String?, fallback: String) -> String {
